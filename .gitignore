@@ -1,0 +1,16 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Generated platform folders (rigenerati con `flutter create .`)
+# Rimuovi queste righe se vuoi versionare le cartelle di piattaforma.

@@ -1,0 +1,110 @@
+/// Chiave musicale: violino (pentagramma superiore) o basso (pentagramma inferiore).
+enum Clef {
+  treble, // chiave di violino
+  bass, // chiave di basso
+}
+
+extension ClefInfo on Clef {
+  String get italianName =>
+      this == Clef.treble ? 'Chiave di violino' : 'Chiave di basso';
+
+  String get shortName =>
+      this == Clef.treble ? 'Violino' : 'Basso';
+
+  /// Glifo unicode della chiave musicale.
+  String get glyph => this == Clef.treble ? '\u{1D11E}' : '\u{1D122}';
+}
+
+/// Modalità di visualizzazione del nome delle note.
+enum Notation {
+  solfege, // Do Re Mi Fa Sol La Si
+  letters, // C D E F G A B
+  both, // Do (C)
+}
+
+extension NotationInfo on Notation {
+  String get label {
+    switch (this) {
+      case Notation.solfege:
+        return 'Do Re Mi';
+      case Notation.letters:
+        return 'A B C';
+      case Notation.both:
+        return 'Entrambe';
+    }
+  }
+}
+
+/// Una nota musicale diatonica, definita da una lettera (0=Do/C ... 6=Si/B)
+/// e da un'ottava (notazione scientifica, es. Do centrale = C4).
+class MusicNote {
+  /// 0=Do/C, 1=Re/D, 2=Mi/E, 3=Fa/F, 4=Sol/G, 5=La/A, 6=Si/B
+  final int letterIndex;
+  final int octave;
+
+  const MusicNote(this.letterIndex, this.octave);
+
+  /// Indice diatonico assoluto (ogni passo = una lettera).
+  int get diatonicIndex => octave * 7 + letterIndex;
+
+  static const List<String> _letters = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  static const List<String> _solfege = [
+    'Do',
+    'Re',
+    'Mi',
+    'Fa',
+    'Sol',
+    'La',
+    'Si'
+  ];
+
+  String get letterName => _letters[letterIndex];
+  String get solfegeName => _solfege[letterIndex];
+
+  /// Nome formattato secondo la notazione scelta.
+  String name(Notation notation) {
+    switch (notation) {
+      case Notation.solfege:
+        return solfegeName;
+      case Notation.letters:
+        return letterName;
+      case Notation.both:
+        return '$solfegeName ($letterName)';
+    }
+  }
+
+  /// Indice diatonico della linea centrale (3ª linea) per ogni chiave.
+  /// Violino: Si4 (B4). Basso: Re3 (D3).
+  static int _middleLineIndex(Clef clef) =>
+      clef == Clef.treble ? 4 * 7 + 6 : 3 * 7 + 1;
+
+  /// Posizione sul pentagramma rispetto alla linea centrale.
+  /// 0 = linea centrale, +1 = mezzo passo in su (uno spazio), ecc.
+  /// Le 5 linee si trovano nelle posizioni -4, -2, 0, +2, +4.
+  int staffPosition(Clef clef) => diatonicIndex - _middleLineIndex(clef);
+
+  @override
+  bool operator ==(Object other) =>
+      other is MusicNote &&
+      other.letterIndex == letterIndex &&
+      other.octave == octave;
+
+  @override
+  int get hashCode => Object.hash(letterIndex, octave);
+}
+
+/// Genera l'elenco delle note per una chiave, entro un intervallo di posizioni
+/// sul pentagramma (default: da un taglio addizionale sotto a uno sopra).
+List<MusicNote> notesForClef(
+  Clef clef, {
+  int minPosition = -6,
+  int maxPosition = 6,
+}) {
+  final middle = MusicNote._middleLineIndex(clef);
+  final notes = <MusicNote>[];
+  for (var pos = minPosition; pos <= maxPosition; pos++) {
+    final di = middle + pos;
+    notes.add(MusicNote(di % 7, di ~/ 7));
+  }
+  return notes;
+}

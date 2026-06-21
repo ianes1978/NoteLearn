@@ -1,0 +1,72 @@
+# NoteLearn 🎵
+
+App Flutter per **imparare il nome delle note sul pentagramma** in chiave di
+violino (pentagramma superiore) e in chiave di basso (pentagramma inferiore).
+
+I nomi delle note possono essere mostrati in due notazioni:
+
+- **Solfège**: Do Re Mi Fa Sol La Si
+- **Lettere**: C D E F G A B
+- oppure **entrambe** insieme (es. `Do (C)`)
+
+## Funzionalità
+
+- 🎼 Pentagramma disegnato a schermo con la nota da indovinare (inclusi i tagli
+  addizionali sopra e sotto le 5 linee).
+- 🎹 Scelta della chiave: **Violino**, **Basso** o **Entrambe** (si alternano).
+- 🔤 Scelta della notazione: **Do Re Mi**, **A B C** o **Entrambe**.
+- ✅ Quiz a risposta multipla con riscontro immediato (verde/rosso).
+- 🔥 Conteggio punteggio, serie corrente e record di serie consecutive.
+- 🌗 Tema chiaro/scuro automatico (Material 3).
+
+## Come eseguire
+
+Servono [Flutter](https://docs.flutter.dev/get-started/install) (SDK 3.x) e un
+dispositivo/emulatore o un browser.
+
+```bash
+# 1. Genera le cartelle di piattaforma (android, ios, web, ...)
+flutter create .
+
+# 2. Scarica le dipendenze
+flutter pub get
+
+# 3. Avvia l'app
+flutter run            # su dispositivo/emulatore
+# oppure
+flutter run -d chrome  # nel browser
+```
+
+> Nota: in questo repository sono inclusi solo il codice sorgente (`lib/`),
+> i test (`test/`) e `pubspec.yaml`. Il comando `flutter create .` aggiunge le
+> cartelle specifiche di piattaforma senza toccare il codice esistente.
+
+## Test
+
+```bash
+flutter test
+```
+
+## Struttura del progetto
+
+```
+lib/
+├── main.dart                  # Avvio app e tema
+├── models/
+│   └── music_note.dart        # Modello nota, chiavi, notazioni, generazione note
+├── widgets/
+│   └── staff_painter.dart     # Disegno del pentagramma, chiave, nota e tagli
+└── screens/
+    ├── home_screen.dart       # Scelta chiave/notazione e avvio
+    └── quiz_screen.dart       # Quiz con punteggio e serie
+```
+
+## Come funziona la posizione delle note
+
+Ogni nota ha una *posizione sul pentagramma* relativa alla linea centrale:
+
+- **Chiave di violino**: la linea centrale (3ª) è il **Si4 (B4)**.
+- **Chiave di basso**: la linea centrale (3ª) è il **Re3 (D3)**.
+
+Le 5 linee corrispondono alle posizioni `-4, -2, 0, +2, +4`; gli spazi a quelle
+dispari. Le posizioni oltre `±4` generano automaticamente i tagli addizionali.
