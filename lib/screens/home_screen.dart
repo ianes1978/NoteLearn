@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/music_note.dart';
 import 'quiz_screen.dart';
+import 'help_screen.dart';
 
 /// Schermata iniziale: scelta della chiave, della notazione e avvio del quiz.
 class HomeScreen extends StatefulWidget {
@@ -31,6 +32,17 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => QuizScreen(
+          clefs: _selectedClefs,
+          notation: _notation,
+        ),
+      ),
+    );
+  }
+
+  void _openHelp() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => HelpScreen(
           clefs: _selectedClefs,
           notation: _notation,
         ),
@@ -133,6 +145,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       child: Text('Inizia', style: TextStyle(fontSize: 18)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _openHelp,
+                    icon: const Icon(Icons.help_outline),
+                    label: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text('Aiuto · Mostra tutte le note',
+                          style: TextStyle(fontSize: 16)),
                     ),
                   ),
                 ],

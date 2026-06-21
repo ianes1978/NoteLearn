@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/music_note.dart';
 import '../widgets/staff_painter.dart';
+import 'help_screen.dart';
 
 /// Schermata del quiz: mostra una nota sul pentagramma e chiede di indovinarne
 /// il nome scegliendo tra i 7 nomi possibili.
@@ -76,6 +77,20 @@ class _QuizScreenState extends State<QuizScreen> {
       appBar: AppBar(
         title: Text(_currentClef.shortName),
         actions: [
+          IconButton(
+            tooltip: 'Aiuto · Mostra tutte le note',
+            icon: const Icon(Icons.help_outline),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => HelpScreen(
+                    clefs: widget.clefs,
+                    notation: widget.notation,
+                  ),
+                ),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
