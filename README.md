@@ -16,6 +16,13 @@ I nomi delle note possono essere mostrati in due notazioni:
 - 🎹 Scelta della chiave: **Violino**, **Basso** o **Entrambe** (si alternano).
 - 🔤 Scelta della notazione: **Do Re Mi**, **A B C** o **Entrambe**.
 - ✅ Quiz a risposta multipla con riscontro immediato (verde/rosso).
+- 🔊 **Suono della nota**: ogni nota mostrata viene anche suonata (tono
+  sintetizzato, nessun file audio), con pulsante **Riascolta** e interruttore
+  audio on/off.
+- 🎧 Due **modalità di gioco**:
+  - **Leggi**: vedi la nota sul pentagramma (e la senti) e indovini il nome;
+  - **Ascolta**: senti solo il suono e indovini la nota; dopo la risposta
+    viene rivelata la posizione sul pentagramma.
 - 🔥 Conteggio punteggio, serie corrente e record di serie consecutive.
 - ❓ Schermata **Aiuto** che mostra **tutte le note** sul pentagramma con il
   nome (commutabile tra lettere A B C e solfège Do Re Mi), per ogni chiave.
@@ -54,8 +61,10 @@ flutter test
 ```
 lib/
 ├── main.dart                  # Avvio app e tema
+├── audio/
+│   └── note_player.dart       # Sintetizza e riproduce il suono delle note
 ├── models/
-│   └── music_note.dart        # Modello nota, chiavi, notazioni, generazione note
+│   └── music_note.dart        # Modello nota, chiavi, notazioni, MIDI/frequenza
 ├── widgets/
 │   └── staff_painter.dart     # Disegno del pentagramma, chiave, nota e tagli
 └── screens/

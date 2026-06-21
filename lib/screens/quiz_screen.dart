@@ -1,19 +1,28 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/music_note.dart';
+import '../audio/note_player.dart';
 import '../widgets/staff_painter.dart';
 import 'help_screen.dart';
 
-/// Schermata del quiz: mostra una nota sul pentagramma e chiede di indovinarne
-/// il nome scegliendo tra i 7 nomi possibili.
+/// Modalità di gioco.
+enum GameMode {
+  read, // vedi la nota sul pentagramma e indovini il nome
+  listen, // ascolti il suono e indovini la nota
+}
+
+/// Schermata del quiz: a seconda della modalità mostra la nota sul pentagramma
+/// oppure la fa solo ascoltare, chiedendo di indovinarne il nome.
 class QuizScreen extends StatefulWidget {
   final List<Clef> clefs;
   final Notation notation;
+  final GameMode mode;
 
   const QuizScreen({
     super.key,
     required this.clefs,
     required this.notation,
+    this.mode = GameMode.read,
   });
 
   @override
@@ -22,6 +31,7 @@ class QuizScreen extends StatefulWidget {
 
 class _QuizScreenState extends State<QuizScreen> {
   final _random = Random();
+  final NotePlayer _audio = NotePlayer();
 
   late Clef _currentClef;
   late MusicNote _currentNote;
@@ -32,11 +42,24 @@ class _QuizScreenState extends State<QuizScreen> {
   int _bestStreak = 0;
   int? _selectedLetter; // lettera scelta (0..6), null se nessuna
   bool _answered = false;
+  bool _soundOn = true;
+
+  bool get _isListen => widget.mode == GameMode.listen;
 
   @override
   void initState() {
     super.initState();
     _nextQuestion();
+  }
+
+  @override
+  void dispose() {
+    _audio.dispose();
+    super.dispose();
+  }
+
+  void _playCurrentNote() {
+    if (_soundOn) _audio.play(_currentNote.frequency);
   }
 
   void _nextQuestion() {
@@ -48,6 +71,8 @@ class _QuizScreenState extends State<QuizScreen> {
       _selectedLetter = null;
       _answered = false;
     });
+    // Suona la nuova nota (sia in modalità "leggi" che "ascolta").
+    WidgetsBinding.instance.addPostFrameCallback((_) => _playCurrentNote());
   }
 
   void _answer(int letterIndex) {
@@ -67,6 +92,45 @@ class _QuizScreenState extends State<QuizScreen> {
     });
   }
 
+  /// Area centrale: in "Ascolta" mostra un grande pulsante finché non si
+  /// risponde, poi rivela la nota sul pentagramma; in "Leggi" mostra sempre
+  /// il pentagramma con la nota.
+  Widget _buildStage(ThemeData theme, bool isCorrect) {
+    final showStaff = !_isListen || _answered;
+    if (showStaff) {
+      return CustomPaint(
+        painter: StaffPainter(
+          clef: _currentClef,
+          note: _currentNote,
+          lineColor: theme.colorScheme.onSurface,
+          noteColor: _answered
+              ? (isCorrect ? Colors.green : Colors.red)
+              : theme.colorScheme.primary,
+        ),
+        child: const SizedBox.expand(),
+      );
+    }
+    // Modalità ascolto, prima della risposta: grande pulsante "Ascolta".
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton.filled(
+            iconSize: 72,
+            onPressed: _playCurrentNote,
+            icon: const Icon(Icons.play_arrow),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Tocca per ascoltare',
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.outline),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -75,8 +139,13 @@ class _QuizScreenState extends State<QuizScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentClef.shortName),
+        title: Text(_isListen ? 'Ascolta' : _currentClef.shortName),
         actions: [
+          IconButton(
+            tooltip: _soundOn ? 'Disattiva audio' : 'Attiva audio',
+            icon: Icon(_soundOn ? Icons.volume_up : Icons.volume_off),
+            onPressed: () => setState(() => _soundOn = !_soundOn),
+          ),
           IconButton(
             tooltip: 'Aiuto · Mostra tutte le note',
             icon: const Icon(Icons.help_outline),
@@ -112,7 +181,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 children: [
                   _StreakBar(streak: _streak, bestStreak: _bestStreak),
                   const SizedBox(height: 12),
-                  // Pentagramma con la nota.
+                  // Area centrale: pentagramma o pulsante d'ascolto.
                   Expanded(
                     flex: 4,
                     child: Container(
@@ -123,20 +192,17 @@ class _QuizScreenState extends State<QuizScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 24),
-                      child: CustomPaint(
-                        painter: StaffPainter(
-                          clef: _currentClef,
-                          note: _currentNote,
-                          lineColor: theme.colorScheme.onSurface,
-                          noteColor: _answered
-                              ? (isCorrect ? Colors.green : Colors.red)
-                              : theme.colorScheme.primary,
-                        ),
-                        child: const SizedBox.expand(),
-                      ),
+                      child: _buildStage(theme, isCorrect),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  // Pulsante per (ri)ascoltare la nota.
+                  TextButton.icon(
+                    onPressed: _playCurrentNote,
+                    icon: const Icon(Icons.replay),
+                    label: const Text('Riascolta'),
+                  ),
+                  const SizedBox(height: 4),
                   // Riscontro dopo la risposta.
                   SizedBox(
                     height: 48,

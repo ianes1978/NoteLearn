@@ -37,6 +37,22 @@ void main() {
     });
   });
 
+  group('MIDI e frequenza', () {
+    test('Do centrale (C4) ha MIDI 60', () {
+      expect(const MusicNote(0, 4).midiNumber, 60);
+    });
+
+    test('La4 (A4) ha MIDI 69 e 440 Hz', () {
+      const a4 = MusicNote(5, 4);
+      expect(a4.midiNumber, 69);
+      expect(a4.frequency, closeTo(440.0, 0.001));
+    });
+
+    test('La5 (A5) è un\'ottava sopra (880 Hz)', () {
+      expect(const MusicNote(5, 5).frequency, closeTo(880.0, 0.001));
+    });
+  });
+
   group('Generazione note', () {
     test('genera l\'intervallo richiesto', () {
       final notes = notesForClef(Clef.treble, minPosition: -4, maxPosition: 4);

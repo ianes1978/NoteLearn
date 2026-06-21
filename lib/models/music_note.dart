@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// Chiave musicale: violino (pentagramma superiore) o basso (pentagramma inferiore).
 enum Clef {
   treble, // chiave di violino
@@ -46,6 +48,15 @@ class MusicNote {
 
   /// Indice diatonico assoluto (ogni passo = una lettera).
   int get diatonicIndex => octave * 7 + letterIndex;
+
+  /// Semitoni dell'ottava per ogni nota naturale (Do Re Mi Fa Sol La Si).
+  static const List<int> _semitoneOffsets = [0, 2, 4, 5, 7, 9, 11];
+
+  /// Numero MIDI della nota (Do centrale C4 = 60).
+  int get midiNumber => (octave + 1) * 12 + _semitoneOffsets[letterIndex];
+
+  /// Frequenza in Hz (temperamento equabile, La4 = 440 Hz).
+  double get frequency => 440.0 * pow(2, (midiNumber - 69) / 12.0);
 
   static const List<String> _letters = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
   static const List<String> _solfege = [

@@ -16,6 +16,7 @@ enum ClefChoice { treble, bass, both }
 class _HomeScreenState extends State<HomeScreen> {
   ClefChoice _clefChoice = ClefChoice.treble;
   Notation _notation = Notation.solfege;
+  GameMode _mode = GameMode.read;
 
   List<Clef> get _selectedClefs {
     switch (_clefChoice) {
@@ -34,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => QuizScreen(
           clefs: _selectedClefs,
           notation: _notation,
+          mode: _mode,
         ),
       ),
     );
@@ -112,6 +114,34 @@ class _HomeScreenState extends State<HomeScreen> {
                         : _clefChoice == ClefChoice.bass
                             ? 'Pentagramma inferiore (chiave di basso)'
                             : 'Si alternano violino e basso',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.outline),
+                  ),
+                  const SizedBox(height: 28),
+                  const _SectionTitle('Modalità di gioco'),
+                  const SizedBox(height: 8),
+                  SegmentedButton<GameMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: GameMode.read,
+                        label: Text('Leggi'),
+                        icon: Icon(Icons.visibility_outlined),
+                      ),
+                      ButtonSegment(
+                        value: GameMode.listen,
+                        label: Text('Ascolta'),
+                        icon: Icon(Icons.hearing),
+                      ),
+                    ],
+                    selected: {_mode},
+                    onSelectionChanged: (s) => setState(() => _mode = s.first),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _mode == GameMode.read
+                        ? 'Vedi la nota sul pentagramma (e la senti) e indovini il nome'
+                        : 'Ascolti il suono e indovini la nota',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.outline),
