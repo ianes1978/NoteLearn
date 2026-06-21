@@ -1,0 +1,59 @@
+name: Deploy Web su GitHub Pages
+
+on:
+  push:
+    branches:
+      - claude/flutter-music-note-app-fi8n4j
+  workflow_dispatch: # avvio manuale dalla tab "Actions"
+
+# Permessi necessari per pubblicare su Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un solo deploy alla volta.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Genera la piattaforma web
+        run: flutter create --platforms=web .
+
+      - name: Installa le dipendenze
+        run: flutter pub get
+
+      # base-href deve corrispondere al percorso del sito di progetto:
+      # https://ianes1978.github.io/NoteLearn/
+      - name: Build Web
+        run: flutter build web --release --base-href /NoteLearn/
+
+      - name: Configura Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Carica artefatto Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - name: Deploy su Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

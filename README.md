@@ -28,8 +28,17 @@ I nomi delle note possono essere mostrati in due notazioni:
   nome (commutabile tra lettere A B C e solfège Do Re Mi), per ogni chiave.
 - 🌗 Tema chiaro/scuro automatico (Material 3).
 
-## Come eseguire
+## Versione online (GitHub Pages)
 
+A ogni push del branch, la versione Web viene pubblicata automaticamente su
+GitHub Pages dal workflow `.github/workflows/pages.yml`:
+
+👉 **https://ianes1978.github.io/NoteLearn/**
+
+> Su repository **privati** GitHub Pages richiede un piano a pagamento
+> (Pro/Team/Enterprise). Su repository pubblici funziona con il piano gratuito.
+
+## Come eseguire
 Servono [Flutter](https://docs.flutter.dev/get-started/install) (SDK 3.x) e un
 dispositivo/emulatore o un browser.
 
