@@ -1,0 +1,60 @@
+name: Build NoteLearn
+
+on:
+  push:
+    branches:
+      - claude/flutter-music-note-app-fi8n4j
+      - main
+  pull_request:
+  workflow_dispatch: # avvio manuale dalla tab "Actions"
+
+jobs:
+  build:
+    name: Analyze, test & build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java (per build Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Genera le cartelle di piattaforma
+        run: flutter create --platforms=android,web .
+
+      - name: Installa le dipendenze
+        run: flutter pub get
+
+      - name: Analisi statica
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Test
+        run: flutter test
+
+      - name: Build APK (Android)
+        run: flutter build apk --release
+
+      - name: Build Web
+        run: flutter build web --release --base-href /NoteLearn/
+
+      - name: Carica APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: notelearn-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Carica build Web
+        uses: actions/upload-artifact@v4
+        with:
+          name: notelearn-web
+          path: build/web
