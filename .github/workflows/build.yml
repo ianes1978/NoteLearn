@@ -30,7 +30,11 @@ jobs:
           cache: true
 
       - name: Genera le cartelle di piattaforma
-        run: flutter create --platforms=android,web .
+        run: |
+          flutter create --platforms=android,web .
+          # Rimuove il test segnaposto generato da `flutter create`
+          # (fa riferimento a MyApp, classe non presente in questa app).
+          rm -f test/widget_test.dart
 
       - name: Installa le dipendenze
         run: flutter pub get

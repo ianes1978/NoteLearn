@@ -69,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ?.copyWith(color: theme.colorScheme.outline),
                   ),
                   const SizedBox(height: 32),
-                  _SectionTitle('Pentagramma'),
+                  const _SectionTitle('Pentagramma'),
                   const SizedBox(height: 8),
                   SegmentedButton<ClefChoice>(
                     segments: const [
@@ -105,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ?.copyWith(color: theme.colorScheme.outline),
                   ),
                   const SizedBox(height: 28),
-                  _SectionTitle('Notazione'),
+                  const _SectionTitle('Notazione'),
                   const SizedBox(height: 8),
                   SegmentedButton<Notation>(
                     segments: const [
