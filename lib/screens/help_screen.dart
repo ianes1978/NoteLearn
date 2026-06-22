@@ -58,7 +58,7 @@ class _HelpScreenState extends State<HelpScreen> {
               ),
             ),
             Text(
-              'Tocca per memorizzare la posizione di ogni nota',
+              'Tutte le note sullo stesso pentagramma · scorri se non entrano',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),
             ),
@@ -91,6 +91,17 @@ class _ClefSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final notes = notesForClef(clef);
+    // Un solo pentagramma con tutte le note in fila ed etichette sotto.
+    final painter = AllNotesStaffPainter(
+      clef: clef,
+      notes: notes,
+      notation: notation,
+      lineColor: theme.colorScheme.onSurface,
+      noteColor: theme.colorScheme.primary,
+      labelColor: theme.colorScheme.onSurface,
+      lineSpacing: 16,
+    );
+    final size = painter.preferredSize;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -102,62 +113,22 @@ class _ClefSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (final note in notes)
-              _NoteCard(clef: clef, note: note, notation: notation),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _NoteCard extends StatelessWidget {
-  final Clef clef;
-  final MusicNote note;
-  final Notation notation;
-
-  const _NoteCard({
-    required this.clef,
-    required this.note,
-    required this.notation,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: 96,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 120,
-            width: double.infinity,
+        Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: CustomPaint(
-              painter: StaffPainter(
-                clef: clef,
-                note: note,
-                lineColor: theme.colorScheme.onSurface,
-                noteColor: theme.colorScheme.primary,
-              ),
+              size: size,
+              painter: painter,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            note.name(notation),
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
