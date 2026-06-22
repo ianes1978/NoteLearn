@@ -140,6 +140,23 @@ class StaffPainter extends CustomPainter {
     );
     canvas.drawOval(rect, notePaint);
     canvas.restore();
+
+    // Alterazione (♯/♭) a sinistra della testa.
+    if (note.accidental != 0) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: note.accidentalSymbol,
+          style: TextStyle(
+            fontSize: lineSpacing * 2.0,
+            color: noteColor,
+            height: 1.0,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas,
+          Offset(cx - lineSpacing * 1.2 - tp.width / 2, cy - tp.height / 2));
+    }
   }
 
   @override

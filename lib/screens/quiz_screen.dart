@@ -5,6 +5,7 @@ import '../models/music_note.dart';
 import '../audio/note_player.dart';
 import '../services/progress_store.dart';
 import '../widgets/staff_painter.dart';
+import '../widgets/piano_keyboard.dart';
 import 'help_screen.dart';
 
 /// Modalità di gioco.
@@ -111,8 +112,8 @@ class _QuizScreenState extends State<QuizScreen> {
 
   // Modalità accordi.
   List<MusicNote> _chordNotes = []; // note dell'accordo, ordine ascendente
-  List<int> _chordExpected = []; // lettere attese (ordine = dal basso)
-  final List<int> _chordPicked = []; // lettere scelte dall'utente
+  List<int> _chordExpected = []; // classi di altezza attese (ordine dal basso)
+  final List<int> _chordPicked = []; // classi di altezza scelte dall'utente
   String _chordLabel = '';
   String _chordQuality = '';
 
@@ -124,7 +125,7 @@ class _QuizScreenState extends State<QuizScreen> {
   int _total = 0;
   int _streak = 0;
   int _record = 0; // record di serie (persistente)
-  int? _selectedLetter; // risposta scelta nei modi "nota"
+  int? _selectedPc; // classe di altezza scelta nei modi "nota"
   int? _selectedInterval; // risposta scelta nel modo intervalli
   bool _answered = false;
   bool _soundOn = true;
@@ -238,37 +239,39 @@ class _QuizScreenState extends State<QuizScreen> {
       _currentClef = clef;
       _currentNote = note;
       _currentNote2 = null;
-      _selectedLetter = null;
+      _selectedPc = null;
       _answered = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _playCurrent());
   }
 
-  /// Prepara un nuovo accordo (eventualmente rivoltato).
+  /// Prepara un nuovo accordo reale (maggiore o minore), eventualmente
+  /// rivoltato. La terza/quinta possono essere alterate (es. Mi maggiore).
   void _nextChord(Clef clef) {
     final rootLetter = _random.nextInt(7);
     final rootOctave = clef == Clef.treble ? 4 : 3;
-    final rootDi = rootOctave * 7 + rootLetter;
-    final triadDi = [rootDi, rootDi + 2, rootDi + 4]; // posizione fondamentale
+    final major = _random.nextBool();
+    final triad = chordTriad(rootLetter, rootOctave, major);
+
+    MusicNote up(MusicNote n) =>
+        MusicNote(n.letterIndex, n.octave + 1, n.accidental);
 
     final inversion = widget.invertedChords ? _random.nextInt(3) : 0;
-    final List<int> orderedDi;
+    final List<MusicNote> chordNotes;
     switch (inversion) {
       case 1: // primo rivolto: basso = terza
-        orderedDi = [triadDi[1], triadDi[2], triadDi[0] + 7];
+        chordNotes = [triad[1], triad[2], up(triad[0])];
         break;
       case 2: // secondo rivolto: basso = quinta
-        orderedDi = [triadDi[2], triadDi[0] + 7, triadDi[1] + 7];
+        chordNotes = [triad[2], up(triad[0]), up(triad[1])];
         break;
       default: // posizione fondamentale
-        orderedDi = [triadDi[0], triadDi[1], triadDi[2]];
+        chordNotes = [triad[0], triad[1], triad[2]];
     }
 
-    final chordNotes =
-        orderedDi.map((di) => MusicNote(di % 7, di ~/ 7)).toList();
     final labelNotation =
         widget.notation == Notation.both ? Notation.solfege : widget.notation;
-    final rootNote = MusicNote(rootLetter, rootOctave);
+    final rootNote = triad[0];
     final label = inversion == 0
         ? rootNote.name(labelNotation)
         : '${rootNote.name(labelNotation)} / '
@@ -277,11 +280,11 @@ class _QuizScreenState extends State<QuizScreen> {
     setState(() {
       _currentClef = clef;
       _chordNotes = chordNotes;
-      _chordExpected = chordNotes.map((n) => n.letterIndex).toList();
+      _chordExpected = chordNotes.map((n) => n.pitchClass).toList();
       _chordPicked.clear();
       _chordLabel = label;
-      _chordQuality = triadQuality(rootLetter);
-      _selectedLetter = null;
+      _chordQuality = major ? 'maggiore' : 'minore';
+      _selectedPc = null;
       _answered = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _playCurrent());
@@ -319,12 +322,12 @@ class _QuizScreenState extends State<QuizScreen> {
     _showBadges(newly);
   }
 
-  void _answer(int letterIndex) {
+  void _answer(int pc) {
     if (_answered) return;
-    final correct = letterIndex == _currentNote.letterIndex;
+    final correct = pc == _currentNote.pitchClass;
     setState(() {
       _answered = true;
-      _selectedLetter = letterIndex;
+      _selectedPc = pc;
       _total++;
       if (correct) {
         _score++;
@@ -338,7 +341,8 @@ class _QuizScreenState extends State<QuizScreen> {
     // Rinforzo multisensoriale.
     if (widget.answerInput == AnswerInput.piano && _soundOn) {
       // Suona il tasto premuto, poi (se sbagliato) la nota giusta.
-      _audio.play(MusicNote(letterIndex, _currentNote.octave).frequency);
+      final pressed = MusicNote.fromMidi((_currentNote.octave + 1) * 12 + pc);
+      _audio.play(pressed.frequency);
       if (!correct) {
         Future.delayed(
             const Duration(milliseconds: 700), () => _playCurrent());
@@ -371,16 +375,16 @@ class _QuizScreenState extends State<QuizScreen> {
 
   /// Selezione di una nota nell'accordo. Alla terza nota verifica da sola.
   /// Toccando una nota già scelta (prima della terza) la si deseleziona.
-  void _pickChordNote(int letterIndex) {
+  void _pickChordNote(int pc) {
     if (_answered) return;
-    if (_chordPicked.contains(letterIndex)) {
-      setState(() => _chordPicked.remove(letterIndex)); // deseleziona
+    if (_chordPicked.contains(pc)) {
+      setState(() => _chordPicked.remove(pc)); // deseleziona
       return;
     }
-    setState(() => _chordPicked.add(letterIndex));
+    setState(() => _chordPicked.add(pc));
     if (_soundOn) {
-      _audio.play(MusicNote(letterIndex, _currentClef == Clef.treble ? 4 : 3)
-          .frequency);
+      final octave = _currentClef == Clef.treble ? 4 : 3;
+      _audio.play(MusicNote.fromMidi((octave + 1) * 12 + pc).frequency);
     }
     if (_chordPicked.length < 3) return;
 
@@ -581,11 +585,11 @@ class _QuizScreenState extends State<QuizScreen> {
       );
     }
     if (_answered) {
-      final correctL = _currentNote.letterIndex;
+      final correctPc = _currentNote.pitchClass;
       return _Highlights(
-        green: {correctL},
-        red: (_selectedLetter != null && _selectedLetter != correctL)
-            ? {_selectedLetter!}
+        green: {correctPc},
+        red: (_selectedPc != null && _selectedPc != correctPc)
+            ? {_selectedPc!}
             : const <int>{},
         selected: const <int>{},
         enabled: false,
@@ -608,11 +612,15 @@ class _QuizScreenState extends State<QuizScreen> {
     }
     final h = _noteHighlights();
     final onTap = _isChord ? _pickChordNote : _answer;
-    if (widget.answerInput == AnswerInput.piano) {
-      return _PianoKeyboard(
+    // Gli accordi usano sempre la tastiera (servono anche i tasti neri).
+    if (_isChord || widget.answerInput == AnswerInput.piano) {
+      return PianoKeyboard(
         notation: widget.notation,
-        highlights: h,
-        onAnswer: onTap,
+        onKey: onTap,
+        green: h.green,
+        red: h.red,
+        selected: h.selected,
+        enabled: h.enabled,
       );
     }
     return _AnswerGrid(
@@ -633,7 +641,7 @@ class _QuizScreenState extends State<QuizScreen> {
       return _selectedInterval ==
           _currentNote.diatonicIntervalTo(_currentNote2!);
     }
-    return _selectedLetter == _currentNote.letterIndex;
+    return _selectedPc == _currentNote.pitchClass;
   }
 
   String _appBarTitle() {
@@ -855,15 +863,16 @@ class _AnswerGrid extends StatelessWidget {
       crossAxisSpacing: 10,
       physics: const NeverScrollableScrollPhysics(),
       children: List.generate(7, (i) {
+        final pc = naturalPitchClass[i];
         Color? bg;
         Color? fg;
-        if (highlights.green.contains(i)) {
+        if (highlights.green.contains(pc)) {
           bg = Colors.green;
           fg = Colors.white;
-        } else if (highlights.red.contains(i)) {
+        } else if (highlights.red.contains(pc)) {
           bg = Colors.red;
           fg = Colors.white;
-        } else if (highlights.selected.contains(i)) {
+        } else if (highlights.selected.contains(pc)) {
           bg = theme.colorScheme.tertiaryContainer;
           fg = theme.colorScheme.onTertiaryContainer;
         }
@@ -873,7 +882,7 @@ class _AnswerGrid extends StatelessWidget {
             foregroundColor: fg ?? theme.colorScheme.onSecondaryContainer,
             padding: EdgeInsets.zero,
           ),
-          onPressed: highlights.enabled ? () => onAnswer(i) : null,
+          onPressed: highlights.enabled ? () => onAnswer(pc) : null,
           child: FittedBox(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -886,117 +895,6 @@ class _AnswerGrid extends StatelessWidget {
           ),
         );
       }),
-    );
-  }
-}
-
-/// Tastiera di pianoforte (un'ottava di tasti bianchi Do…Si) per rispondere
-/// toccando il tasto corrispondente alla nota. I tasti neri sono decorativi
-/// (l'app usa solo note naturali).
-class _PianoKeyboard extends StatelessWidget {
-  final Notation notation;
-  final _Highlights highlights;
-  final void Function(int) onAnswer;
-
-  const _PianoKeyboard({
-    required this.notation,
-    required this.highlights,
-    required this.onAnswer,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // Etichetta dei tasti bianchi (con "Entrambe" usiamo il solfège).
-    final labelNotation =
-        notation == Notation.both ? Notation.solfege : notation;
-    final labels =
-        List.generate(7, (i) => MusicNote(i, 4).name(labelNotation));
-
-    // Tasti neri: dopo Do, Re, Fa, Sol, La (indici bianchi 0,1,3,4,5).
-    const blackAfter = [0, 1, 3, 4, 5];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final whiteW = constraints.maxWidth / 7;
-        final h = constraints.maxHeight;
-        final blackW = whiteW * 0.58;
-        final blackH = h * 0.6;
-
-        return Stack(
-          children: [
-            Row(
-              children: List.generate(7, (i) {
-                Color bg = Colors.white;
-                Color fg = Colors.black87;
-                if (highlights.green.contains(i)) {
-                  bg = Colors.green;
-                  fg = Colors.white;
-                } else if (highlights.red.contains(i)) {
-                  bg = Colors.red;
-                  fg = Colors.white;
-                } else if (highlights.selected.contains(i)) {
-                  bg = theme.colorScheme.tertiaryContainer;
-                  fg = theme.colorScheme.onTertiaryContainer;
-                }
-                return SizedBox(
-                  width: whiteW,
-                  height: h,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 1.5),
-                    child: Material(
-                      color: bg,
-                      elevation: 1,
-                      borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(8)),
-                      child: InkWell(
-                        borderRadius: const BorderRadius.vertical(
-                            bottom: Radius.circular(8)),
-                        onTap: highlights.enabled ? () => onAnswer(i) : null,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                                color: theme.colorScheme.outlineVariant),
-                            borderRadius: const BorderRadius.vertical(
-                                bottom: Radius.circular(8)),
-                          ),
-                          alignment: Alignment.bottomCenter,
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            labels[i],
-                            style: TextStyle(
-                              color: fg,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-            // Tasti neri decorativi (non rispondono).
-            for (final g in blackAfter)
-              Positioned(
-                left: (g + 1) * whiteW - blackW / 2,
-                top: 0,
-                width: blackW,
-                height: blackH,
-                child: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(5)),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
     );
   }
 }

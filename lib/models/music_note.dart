@@ -44,27 +44,36 @@ class MusicNote {
   final int letterIndex;
   final int octave;
 
-  const MusicNote(this.letterIndex, this.octave);
+  /// Alterazione: 0 naturale, +1 diesis (♯), -1 bemolle (♭).
+  final int accidental;
+
+  const MusicNote(this.letterIndex, this.octave, [this.accidental = 0]);
 
   /// Indice diatonico assoluto (ogni passo = una lettera).
   int get diatonicIndex => octave * 7 + letterIndex;
 
   /// Semitoni dell'ottava per ogni nota naturale (Do Re Mi Fa Sol La Si).
-  static const List<int> _semitoneOffsets = [0, 2, 4, 5, 7, 9, 11];
+  static const List<int> semitoneOffsets = [0, 2, 4, 5, 7, 9, 11];
+
+  /// Classe di altezza cromatica (0=Do, 1=Do♯, … 11=Si).
+  int get pitchClass => (semitoneOffsets[letterIndex] + accidental) % 12;
 
   /// Numero MIDI della nota (Do centrale C4 = 60).
-  int get midiNumber => (octave + 1) * 12 + _semitoneOffsets[letterIndex];
+  int get midiNumber =>
+      (octave + 1) * 12 + semitoneOffsets[letterIndex] + accidental;
 
   /// Frequenza in Hz (temperamento equabile, La4 = 440 Hz).
   double get frequency => 440.0 * pow(2, (midiNumber - 69) / 12.0);
 
-  /// Crea una nota naturale dal numero MIDI (gli alterati vengono "appoggiati"
-  /// alla naturale più vicina in basso, es. Do# -> Do). C4 (MIDI 60) = Do4.
+  /// Crea una nota dal numero MIDI usando la grafia con i diesis
+  /// (i tasti neri diventano Do♯, Re♯, Fa♯, Sol♯, La♯). C4 (MIDI 60) = Do4.
   factory MusicNote.fromMidi(int midi) {
+    // Per ogni classe di altezza: lettera naturale + alterazione.
     const pcToLetter = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+    const pcToAcc = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
     final octave = (midi ~/ 12) - 1;
-    final letter = pcToLetter[midi % 12];
-    return MusicNote(letter, octave);
+    final pc = midi % 12;
+    return MusicNote(pcToLetter[pc], octave, pcToAcc[pc]);
   }
 
   static const List<String> _letters = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -81,15 +90,20 @@ class MusicNote {
   String get letterName => _letters[letterIndex];
   String get solfegeName => _solfege[letterIndex];
 
-  /// Nome formattato secondo la notazione scelta.
+  /// Simbolo dell'alterazione (♯/♭/'').
+  String get accidentalSymbol =>
+      accidental > 0 ? '♯' : (accidental < 0 ? '♭' : '');
+
+  /// Nome formattato secondo la notazione scelta (con l'eventuale alterazione).
   String name(Notation notation) {
+    final s = accidentalSymbol;
     switch (notation) {
       case Notation.solfege:
-        return solfegeName;
+        return '$solfegeName$s';
       case Notation.letters:
-        return letterName;
+        return '$letterName$s';
       case Notation.both:
-        return '$solfegeName ($letterName)';
+        return '$solfegeName$s ($letterName$s)';
     }
   }
 
@@ -112,10 +126,11 @@ class MusicNote {
   bool operator ==(Object other) =>
       other is MusicNote &&
       other.letterIndex == letterIndex &&
-      other.octave == octave;
+      other.octave == octave &&
+      other.accidental == accidental;
 
   @override
-  int get hashCode => Object.hash(letterIndex, octave);
+  int get hashCode => Object.hash(letterIndex, octave, accidental);
 }
 
 /// Nomi italiani degli intervalli diatonici (indice = numero intervallo).
@@ -147,6 +162,33 @@ List<MusicNote> diatonicTriad(MusicNote root) {
     root,
     MusicNote(d2 % 7, d2 ~/ 7),
     MusicNote(d4 % 7, d4 ~/ 7),
+  ];
+}
+
+/// Classe di altezza (0..11) di ogni nota naturale (Do..Si).
+const List<int> naturalPitchClass = [0, 2, 4, 5, 7, 9, 11];
+
+/// Costruisce una triade reale (maggiore o minore) sulla nota naturale [root]
+/// indicata, calcolando le alterazioni corrette di terza e quinta.
+/// Es. Mi maggiore = Mi, Sol♯, Si; Do minore = Do, Mi♭, Sol.
+List<MusicNote> chordTriad(int rootLetter, int rootOctave, bool major) {
+  final rootMidi =
+      (rootOctave + 1) * 12 + MusicNote.semitoneOffsets[rootLetter];
+
+  MusicNote spell(int steps, int semis) {
+    final li = rootLetter + steps;
+    final letter = li % 7;
+    final octave = rootOctave + (li ~/ 7);
+    final naturalMidi =
+        (octave + 1) * 12 + MusicNote.semitoneOffsets[letter];
+    final acc = (rootMidi + semis) - naturalMidi;
+    return MusicNote(letter, octave, acc);
+  }
+
+  return [
+    MusicNote(rootLetter, rootOctave, 0),
+    spell(2, major ? 4 : 3),
+    spell(4, 7),
   ];
 }
 

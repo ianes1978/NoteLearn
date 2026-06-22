@@ -5,7 +5,7 @@ import 'package:flutter/scheduler.dart';
 import '../audio/midi_parser.dart';
 import '../audio/note_player.dart';
 import '../models/music_note.dart';
-import '../widgets/play_keyboard.dart';
+import '../widgets/piano_keyboard.dart';
 
 /// Stato di una nota nel gioco.
 enum _NoteStatus { pending, hit, missed }
@@ -181,9 +181,10 @@ class _MidiGameScreenState extends State<MidiGameScreen>
     }
   }
 
-  void _onPlay(int letterIndex) {
+  void _onPlay(int pitchClass) {
     // Suona sempre il tasto premuto (feedback).
-    _audio.play(MusicNote(letterIndex, _clef == Clef.treble ? 4 : 3).frequency);
+    final octave = _clef == Clef.treble ? 4 : 3;
+    _audio.play(MusicNote.fromMidi((octave + 1) * 12 + pitchClass).frequency);
     if (_phase != _Phase.playing) return;
 
     // Cerca la nota in finestra più vicina al momento attuale.
@@ -198,7 +199,7 @@ class _MidiGameScreenState extends State<MidiGameScreen>
       }
     }
     if (best == null) return; // nessuna nota: nota libera, nessuna penalità
-    if (best.note.letterIndex == letterIndex) {
+    if (best.note.pitchClass == pitchClass) {
       setState(() {
         best!.status = _NoteStatus.hit;
         _score++;
@@ -343,7 +344,7 @@ class _MidiGameScreenState extends State<MidiGameScreen>
           height: 150,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-            child: PlayKeyboard(
+            child: PianoKeyboard(
               notation: widget.notation,
               onKey: _onPlay,
             ),
