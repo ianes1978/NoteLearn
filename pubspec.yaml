@@ -19,5 +19,11 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
 
+# Fissa il plugin del ciclo di vita Android a una versione che non richiede
+# compileSdk 36 (le versioni recenti, tirate da file_picker, lo pretendono e
+# fanno fallire la build APK con il Flutter di questa CI).
+dependency_overrides:
+  flutter_plugin_android_lifecycle: 2.0.17
+
 flutter:
   uses-material-design: true

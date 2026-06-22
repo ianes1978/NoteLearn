@@ -36,18 +36,6 @@ jobs:
           # (fa riferimento a MyApp, classe non presente in questa app).
           rm -f test/widget_test.dart
 
-      - name: Imposta compileSdk 36 (richiesto da file_picker)
-        run: |
-          f=android/app/build.gradle.kts
-          if [ -f "$f" ]; then
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' "$f"
-          fi
-          g=android/app/build.gradle
-          if [ -f "$g" ]; then
-            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/' "$g"
-            sed -i 's/compileSdk flutter.compileSdkVersion/compileSdk 36/' "$g"
-          fi
-
       - name: Installa le dipendenze
         run: flutter pub get
 

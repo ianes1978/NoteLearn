@@ -370,9 +370,13 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   /// Selezione di una nota nell'accordo. Alla terza nota verifica da sola.
+  /// Toccando una nota già scelta (prima della terza) la si deseleziona.
   void _pickChordNote(int letterIndex) {
     if (_answered) return;
-    if (_chordPicked.contains(letterIndex)) return; // ignora i doppioni
+    if (_chordPicked.contains(letterIndex)) {
+      setState(() => _chordPicked.remove(letterIndex)); // deseleziona
+      return;
+    }
     setState(() => _chordPicked.add(letterIndex));
     if (_soundOn) {
       _audio.play(MusicNote(letterIndex, _currentClef == Clef.treble ? 4 : 3)
