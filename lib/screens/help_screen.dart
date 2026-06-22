@@ -128,6 +128,149 @@ class _ClefSection extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        _MnemonicsCard(clef: clef, notation: notation),
+      ],
+    );
+  }
+}
+
+/// Regole mnemoniche per ricordare le note su righe e spazi del pentagramma.
+class _MnemonicsCard extends StatelessWidget {
+  final Clef clef;
+  final Notation notation;
+
+  const _MnemonicsCard({required this.clef, required this.notation});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isTreble = clef == Clef.treble;
+
+    // Sequenze (dal basso verso l'alto) in solfège e in lettere, con il
+    // classico acronimo inglese usato per memorizzarle.
+    final linesSolfege =
+        isTreble ? 'Mi · Sol · Si · Re · Fa' : 'Sol · Si · Re · Fa · La';
+    final linesLetters = isTreble ? 'E · G · B · D · F' : 'G · B · D · F · A';
+    final linesPhrase = isTreble
+        ? 'Every Good Boy Does Fine'
+        : 'Good Boys Do Fine Always';
+
+    final spacesSolfege =
+        isTreble ? 'Fa · La · Do · Mi' : 'La · Do · Mi · Sol';
+    final spacesLetters = isTreble ? 'F · A · C · E' : 'A · C · E · G';
+    // In chiave di violino gli spazi formano la parola "FACE", quindi non
+    // serve una frase; in chiave di basso si usa "All Cows Eat Grass".
+    final String? spacesPhrase = isTreble ? null : 'All Cows Eat Grass';
+    final spacesExtra = isTreble
+        ? 'Le lettere F-A-C-E formano la parola «FACE» (faccia)!'
+        : null;
+
+    final useLetters = notation == Notation.letters;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('💡', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 6),
+              Text(
+                'Come ricordarle',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _MnemonicRow(
+            group: 'Note sulle RIGHE',
+            primary: useLetters ? linesLetters : linesSolfege,
+            secondary: useLetters ? linesSolfege : linesLetters,
+            phrase: linesPhrase,
+          ),
+          const SizedBox(height: 10),
+          _MnemonicRow(
+            group: 'Note negli SPAZI',
+            primary: useLetters ? spacesLetters : spacesSolfege,
+            secondary: useLetters ? spacesSolfege : spacesLetters,
+            phrase: spacesPhrase,
+            extra: spacesExtra,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MnemonicRow extends StatelessWidget {
+  final String group;
+  final String primary;
+  final String secondary;
+  final String? phrase;
+  final String? extra;
+
+  const _MnemonicRow({
+    required this.group,
+    required this.primary,
+    required this.secondary,
+    this.phrase,
+    this.extra,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$group (dal basso in alto)',
+          style: theme.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          primary,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          secondary,
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.outline),
+        ),
+        if (phrase != null)
+          Text(
+            'In inglese: «$phrase»',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        if (extra != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              extra!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
       ],
     );
   }
