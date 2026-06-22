@@ -94,6 +94,11 @@ class MusicNote {
   /// Le 5 linee si trovano nelle posizioni -4, -2, 0, +2, +4.
   int staffPosition(Clef clef) => diatonicIndex - _middleLineIndex(clef);
 
+  /// Numero di intervallo diatonico verso un'altra nota (unisono = 1,
+  /// seconda = 2, terza = 3, …). Indipendente dalla direzione.
+  int diatonicIntervalTo(MusicNote other) =>
+      (other.diatonicIndex - diatonicIndex).abs() + 1;
+
   @override
   bool operator ==(Object other) =>
       other is MusicNote &&
@@ -102,6 +107,35 @@ class MusicNote {
 
   @override
   int get hashCode => Object.hash(letterIndex, octave);
+}
+
+/// Nomi italiani degli intervalli diatonici (indice = numero intervallo).
+const List<String> _intervalNames = [
+  '',
+  'Unisono',
+  'Seconda',
+  'Terza',
+  'Quarta',
+  'Quinta',
+  'Sesta',
+  'Settima',
+  'Ottava',
+];
+
+/// Nome italiano dell'intervallo dato il suo numero (1 = unisono … 8 = ottava).
+String intervalName(int number) =>
+    (number >= 0 && number < _intervalNames.length)
+        ? _intervalNames[number]
+        : '$numberª';
+
+/// Note "guida" di una chiave: riferimenti facili da cui ricavare le altre.
+/// Violino: Do centrale e Sol (la chiave "gira" sul Sol). Basso: Do centrale
+/// e Fa (la chiave segna il Fa fra i due punti).
+List<MusicNote> anchorNotes(Clef clef) {
+  if (clef == Clef.treble) {
+    return const [MusicNote(0, 4), MusicNote(4, 4)]; // Do4, Sol4
+  }
+  return const [MusicNote(0, 4), MusicNote(3, 3)]; // Do4, Fa3
 }
 
 /// Genera l'elenco delle note per una chiave, entro un intervallo di posizioni

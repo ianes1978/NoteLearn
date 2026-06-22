@@ -91,6 +91,8 @@ class _ClefSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final notes = notesForClef(clef);
+    final anchors = anchorNotes(clef).toSet();
+    const anchorColor = Color(0xFFE65100);
     // Un solo pentagramma con tutte le note in fila ed etichette sotto.
     final painter = AllNotesStaffPainter(
       clef: clef,
@@ -100,8 +102,15 @@ class _ClefSection extends StatelessWidget {
       noteColor: theme.colorScheme.primary,
       labelColor: theme.colorScheme.onSurface,
       lineSpacing: 16,
+      anchors: anchors,
+      anchorColor: anchorColor,
     );
     final size = painter.preferredSize;
+    final anchorText = clef == Clef.treble
+        ? 'Note guida (in arancione): Do centrale e Sol — la chiave di violino '
+            '«gira» proprio sul Sol (2ª riga).'
+        : 'Note guida (in arancione): Do centrale e Fa — la chiave di basso '
+            'segna il Fa fra i suoi due punti (4ª riga).';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -127,6 +136,28 @@ class _ClefSection extends StatelessWidget {
               painter: painter,
             ),
           ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 3, right: 6),
+              width: 12,
+              height: 12,
+              decoration: const BoxDecoration(
+                color: anchorColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                anchorText,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         _MnemonicsCard(clef: clef, notation: notation),
@@ -155,6 +186,9 @@ class _MnemonicsCard extends StatelessWidget {
     final linesPhrase = isTreble
         ? 'Every Good Boy Does Fine'
         : 'Good Boys Do Fine Always';
+    final linesItalian = isTreble
+        ? 'Mi Sono Sicuro, Resto Fermo'
+        : 'Sole Sincero Regala Favole Lassù';
 
     final spacesSolfege =
         isTreble ? 'Fa · La · Do · Mi' : 'La · Do · Mi · Sol';
@@ -162,6 +196,8 @@ class _MnemonicsCard extends StatelessWidget {
     // In chiave di violino gli spazi formano la parola "FACE", quindi non
     // serve una frase; in chiave di basso si usa "All Cows Eat Grass".
     final String? spacesPhrase = isTreble ? null : 'All Cows Eat Grass';
+    final spacesItalian =
+        isTreble ? 'Fa La Dolce Mimosa' : 'La Dolce Mia Sorpresa';
     final spacesExtra = isTreble
         ? 'Le lettere F-A-C-E formano la parola «FACE» (faccia)!'
         : null;
@@ -197,6 +233,7 @@ class _MnemonicsCard extends StatelessWidget {
             primary: useLetters ? linesLetters : linesSolfege,
             secondary: useLetters ? linesSolfege : linesLetters,
             phrase: linesPhrase,
+            italian: linesItalian,
           ),
           const SizedBox(height: 10),
           _MnemonicRow(
@@ -204,6 +241,7 @@ class _MnemonicsCard extends StatelessWidget {
             primary: useLetters ? spacesLetters : spacesSolfege,
             secondary: useLetters ? spacesSolfege : spacesLetters,
             phrase: spacesPhrase,
+            italian: spacesItalian,
             extra: spacesExtra,
           ),
         ],
@@ -217,6 +255,7 @@ class _MnemonicRow extends StatelessWidget {
   final String primary;
   final String secondary;
   final String? phrase;
+  final String? italian;
   final String? extra;
 
   const _MnemonicRow({
@@ -224,6 +263,7 @@ class _MnemonicRow extends StatelessWidget {
     required this.primary,
     required this.secondary,
     this.phrase,
+    this.italian,
     this.extra,
   });
 
@@ -252,6 +292,14 @@ class _MnemonicRow extends StatelessWidget {
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.outline),
         ),
+        if (italian != null)
+          Text(
+            'Filastrocca: «$italian»',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         if (phrase != null)
           Text(
             'In inglese: «$phrase»',

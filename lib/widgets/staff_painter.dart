@@ -6,6 +6,9 @@ import '../models/music_note.dart';
 class StaffPainter extends CustomPainter {
   final Clef clef;
   final MusicNote? note;
+
+  /// Seconda nota opzionale (usata nella modalità intervalli).
+  final MusicNote? note2;
   final Color lineColor;
   final Color noteColor;
 
@@ -14,6 +17,7 @@ class StaffPainter extends CustomPainter {
     required this.note,
     required this.lineColor,
     required this.noteColor,
+    this.note2,
   });
 
   @override
@@ -42,8 +46,16 @@ class StaffPainter extends CustomPainter {
     _drawClef(canvas, left, centerY, lineSpacing);
 
     final note = this.note;
-    if (note != null) {
-      _drawNote(canvas, note, size, lineSpacing, yForPosition, linePaint);
+    final note2 = this.note2;
+    if (note != null && note2 != null) {
+      // Due note affiancate (modalità intervalli).
+      _drawNote(canvas, note, size.width * 0.46, lineSpacing, yForPosition,
+          linePaint);
+      _drawNote(canvas, note2, size.width * 0.72, lineSpacing, yForPosition,
+          linePaint);
+    } else if (note != null) {
+      _drawNote(canvas, note, size.width * 0.62, lineSpacing, yForPosition,
+          linePaint);
     }
   }
 
@@ -67,13 +79,12 @@ class StaffPainter extends CustomPainter {
   void _drawNote(
     Canvas canvas,
     MusicNote note,
-    Size size,
+    double cx,
     double lineSpacing,
     double Function(int) yForPosition,
     Paint linePaint,
   ) {
     final pos = note.staffPosition(clef);
-    final cx = size.width * 0.62;
     final cy = yForPosition(pos);
 
     // Tagli addizionali sopra (pos >= 6) e sotto (pos <= -6).
@@ -125,6 +136,7 @@ class StaffPainter extends CustomPainter {
   bool shouldRepaint(covariant StaffPainter oldDelegate) {
     return oldDelegate.clef != clef ||
         oldDelegate.note != note ||
+        oldDelegate.note2 != note2 ||
         oldDelegate.lineColor != lineColor ||
         oldDelegate.noteColor != noteColor;
   }
@@ -142,6 +154,10 @@ class AllNotesStaffPainter extends CustomPainter {
   final Color labelColor;
   final double lineSpacing;
 
+  /// Note "guida" da evidenziare con un colore diverso.
+  final Set<MusicNote> anchors;
+  final Color anchorColor;
+
   AllNotesStaffPainter({
     required this.clef,
     required this.notes,
@@ -150,6 +166,8 @@ class AllNotesStaffPainter extends CustomPainter {
     required this.noteColor,
     required this.labelColor,
     required this.lineSpacing,
+    this.anchors = const {},
+    this.anchorColor = const Color(0xFFE65100),
   });
 
   /// Larghezza orizzontale occupata da ciascuna nota.
@@ -198,8 +216,12 @@ class AllNotesStaffPainter extends CustomPainter {
     for (var i = 0; i < notes.length; i++) {
       final note = notes[i];
       final cx = clefWidth + noteSpacing * (i + 0.5);
-      _drawNote(canvas, note, cx, yForPosition, linePaint);
-      _drawLabel(canvas, note.name(notation), cx, labelTop);
+      final isAnchor = anchors.contains(note);
+      _drawNote(canvas, note, cx, yForPosition, linePaint,
+          color: isAnchor ? anchorColor : noteColor);
+      _drawLabel(canvas, note.name(notation), cx, labelTop,
+          color: isAnchor ? anchorColor : labelColor,
+          bold: isAnchor);
     }
   }
 
@@ -224,8 +246,9 @@ class AllNotesStaffPainter extends CustomPainter {
     MusicNote note,
     double cx,
     double Function(int) yForPosition,
-    Paint linePaint,
-  ) {
+    Paint linePaint, {
+    required Color color,
+  }) {
     final pos = note.staffPosition(clef);
     final cy = yForPosition(pos);
 
@@ -257,7 +280,7 @@ class AllNotesStaffPainter extends CustomPainter {
     }
 
     final notePaint = Paint()
-      ..color = noteColor
+      ..color = color
       ..style = PaintingStyle.fill;
 
     canvas.save();
@@ -272,14 +295,15 @@ class AllNotesStaffPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _drawLabel(Canvas canvas, String text, double cx, double top) {
+  void _drawLabel(Canvas canvas, String text, double cx, double top,
+      {required Color color, bool bold = false}) {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
         style: TextStyle(
           fontSize: lineSpacing * 0.9,
-          color: labelColor,
-          fontWeight: FontWeight.bold,
+          color: color,
+          fontWeight: bold ? FontWeight.w900 : FontWeight.bold,
           height: 1.0,
         ),
       ),
@@ -297,6 +321,8 @@ class AllNotesStaffPainter extends CustomPainter {
         oldDelegate.lineColor != lineColor ||
         oldDelegate.noteColor != noteColor ||
         oldDelegate.labelColor != labelColor ||
-        oldDelegate.lineSpacing != lineSpacing;
+        oldDelegate.lineSpacing != lineSpacing ||
+        oldDelegate.anchors != anchors ||
+        oldDelegate.anchorColor != anchorColor;
   }
 }

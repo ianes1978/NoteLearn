@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/music_note.dart';
+import '../services/progress_store.dart';
 import 'quiz_screen.dart';
 import 'help_screen.dart';
 
@@ -17,6 +18,22 @@ class _HomeScreenState extends State<HomeScreen> {
   ClefChoice _clefChoice = ClefChoice.treble;
   Notation _notation = Notation.solfege;
   GameMode _mode = GameMode.read;
+  AnswerInput _answerInput = AnswerInput.buttons;
+
+  final ProgressStore _store = ProgressStore();
+  Progress _progress = Progress();
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshProgress();
+  }
+
+  Future<void> _refreshProgress() async {
+    final p = await _store.load();
+    if (!mounted) return;
+    setState(() => _progress = p);
+  }
 
   List<Clef> get _selectedClefs {
     switch (_clefChoice) {
@@ -29,16 +46,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _start() {
-    Navigator.of(context).push(
+  Future<void> _start() async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => QuizScreen(
           clefs: _selectedClefs,
           notation: _notation,
           mode: _mode,
+          answerInput: _answerInput,
         ),
       ),
     );
+    // Al ritorno aggiorna record, streak e badge.
+    _refreshProgress();
   }
 
   void _openHelp() {
@@ -82,7 +102,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.outline),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
+                  _ProgressCard(progress: _progress),
+                  const SizedBox(height: 28),
                   const _SectionTitle('Pentagramma'),
                   const SizedBox(height: 8),
                   SegmentedButton<ClefChoice>(
@@ -107,41 +129,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     onSelectionChanged: (s) =>
                         setState(() => _clefChoice = s.first),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _clefChoice == ClefChoice.treble
-                        ? 'Pentagramma superiore (chiave di violino)'
-                        : _clefChoice == ClefChoice.bass
-                            ? 'Pentagramma inferiore (chiave di basso)'
-                            : 'Si alternano violino e basso',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.outline),
-                  ),
                   const SizedBox(height: 28),
                   const _SectionTitle('Modalità di gioco'),
                   const SizedBox(height: 8),
-                  SegmentedButton<GameMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: GameMode.read,
-                        label: Text('Leggi'),
-                        icon: Icon(Icons.visibility_outlined),
-                      ),
-                      ButtonSegment(
-                        value: GameMode.listen,
-                        label: Text('Ascolta'),
-                        icon: Icon(Icons.hearing),
-                      ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      for (final m in GameMode.values)
+                        ChoiceChip(
+                          label: Text(m.label),
+                          avatar: Icon(
+                            m.icon,
+                            size: 18,
+                            color: _mode == m
+                                ? theme.colorScheme.onPrimary
+                                : theme.colorScheme.primary,
+                          ),
+                          selected: _mode == m,
+                          selectedColor: theme.colorScheme.primary,
+                          labelStyle: TextStyle(
+                            color: _mode == m
+                                ? theme.colorScheme.onPrimary
+                                : null,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          onSelected: (_) => setState(() => _mode = m),
+                        ),
                     ],
-                    selected: {_mode},
-                    onSelectionChanged: (s) => setState(() => _mode = s.first),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _mode == GameMode.read
-                        ? 'Vedi la nota sul pentagramma (e la senti) e indovini il nome'
-                        : 'Ascolti il suono e indovini la nota',
+                    _mode.description,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.outline),
@@ -168,7 +188,40 @@ class _HomeScreenState extends State<HomeScreen> {
                     onSelectionChanged: (s) =>
                         setState(() => _notation = s.first),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 28),
+                  const _SectionTitle('Come rispondere'),
+                  const SizedBox(height: 8),
+                  SegmentedButton<AnswerInput>(
+                    segments: const [
+                      ButtonSegment(
+                        value: AnswerInput.buttons,
+                        label: Text('Pulsanti'),
+                        icon: Icon(Icons.apps),
+                      ),
+                      ButtonSegment(
+                        value: AnswerInput.piano,
+                        label: Text('Piano'),
+                        icon: Icon(Icons.piano),
+                      ),
+                    ],
+                    selected: {_answerInput},
+                    onSelectionChanged: (s) =>
+                        setState(() => _answerInput = s.first),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _answerInput == AnswerInput.buttons
+                        ? 'Rispondi toccando il nome della nota'
+                        : 'Rispondi toccando il tasto sulla tastiera del piano',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.outline),
+                  ),
+                  const SizedBox(height: 28),
+                  const _SectionTitle('Traguardi'),
+                  const SizedBox(height: 8),
+                  _BadgesWrap(unlocked: _progress.unlockedBadges),
+                  const SizedBox(height: 32),
                   FilledButton.icon(
                     onPressed: _start,
                     icon: const Icon(Icons.play_arrow),
@@ -193,6 +246,101 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Mostra streak giornaliera, record di serie e miglior punteggio a tempo.
+class _ProgressCard extends StatelessWidget {
+  final Progress progress;
+  const _ProgressCard({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _Stat(
+            emoji: '🔥',
+            value: '${progress.dailyStreak}',
+            label: progress.dailyStreak == 1 ? 'giorno' : 'giorni',
+          ),
+          _Stat(
+            emoji: '🏆',
+            value: '${progress.bestStreak}',
+            label: 'serie',
+          ),
+          _Stat(
+            emoji: '⏱️',
+            value: '${progress.bestTimedScore}',
+            label: 'a tempo',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String emoji;
+  final String value;
+  final String label;
+  const _Stat(
+      {required this.emoji, required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 20)),
+        const SizedBox(height: 2),
+        Text(value,
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        Text(label,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.outline)),
+      ],
+    );
+  }
+}
+
+/// Bacheca dei traguardi: badge sbloccati a colori, gli altri in grigio.
+class _BadgesWrap extends StatelessWidget {
+  final Set<String> unlocked;
+  const _BadgesWrap({required this.unlocked});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      alignment: WrapAlignment.center,
+      children: [
+        for (final b in kAchievements)
+          Tooltip(
+            message: '${b.title}\n${b.description}',
+            child: Opacity(
+              opacity: unlocked.contains(b.id) ? 1 : 0.3,
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: unlocked.contains(b.id)
+                    ? theme.colorScheme.primaryContainer
+                    : theme.colorScheme.surfaceContainerHighest,
+                child: Text(b.emoji, style: const TextStyle(fontSize: 20)),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
