@@ -36,6 +36,37 @@ jobs:
           # (fa riferimento a MyApp, classe non presente in questa app).
           rm -f test/widget_test.dart
 
+      - name: Forza compileSdk 36 su tutti i moduli (richiesto da file_picker)
+        run: |
+          kts=android/build.gradle.kts
+          groovy=android/build.gradle
+          if [ -f "$kts" ]; then
+            cat >> "$kts" <<'EOF'
+
+subprojects {
+    afterEvaluate {
+        val androidExt = extensions.findByName("android")
+        if (androidExt is com.android.build.gradle.BaseExtension) {
+            androidExt.compileSdkVersion(36)
+        }
+    }
+}
+EOF
+          elif [ -f "$groovy" ]; then
+            cat >> "$groovy" <<'EOF'
+
+subprojects {
+    afterEvaluate { proj ->
+        if (proj.hasProperty('android')) {
+            proj.android {
+                compileSdkVersion 36
+            }
+        }
+    }
+}
+EOF
+          fi
+
       - name: Installa le dipendenze
         run: flutter pub get
 
