@@ -58,6 +58,15 @@ class MusicNote {
   /// Frequenza in Hz (temperamento equabile, La4 = 440 Hz).
   double get frequency => 440.0 * pow(2, (midiNumber - 69) / 12.0);
 
+  /// Crea una nota naturale dal numero MIDI (gli alterati vengono "appoggiati"
+  /// alla naturale più vicina in basso, es. Do# -> Do). C4 (MIDI 60) = Do4.
+  factory MusicNote.fromMidi(int midi) {
+    const pcToLetter = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+    final octave = (midi ~/ 12) - 1;
+    final letter = pcToLetter[midi % 12];
+    return MusicNote(letter, octave);
+  }
+
   static const List<String> _letters = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
   static const List<String> _solfege = [
     'Do',

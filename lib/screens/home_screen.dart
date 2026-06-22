@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/music_note.dart';
 import '../services/progress_store.dart';
 import 'quiz_screen.dart';
+import 'midi_game_screen.dart';
 import 'help_screen.dart';
 
 /// Schermata iniziale: scelta della chiave, della notazione e avvio del quiz.
@@ -50,13 +51,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _start() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => QuizScreen(
-          clefs: _selectedClefs,
-          notation: _notation,
-          mode: _mode,
-          answerInput: _answerInput,
-          invertedChords: _invertedChords,
-        ),
+        builder: (_) => _mode == GameMode.midi
+            ? MidiGameScreen(notation: _notation)
+            : QuizScreen(
+                clefs: _selectedClefs,
+                notation: _notation,
+                mode: _mode,
+                answerInput: _answerInput,
+                invertedChords: _invertedChords,
+              ),
       ),
     );
     // Al ritorno aggiorna record, streak e badge.

@@ -14,6 +14,7 @@ enum GameMode {
   timed, // a tempo: quante note indovini in 60 secondi
   interval, // indovini l'intervallo fra due note
   chord, // costruisci l'accordo selezionando le tre note
+  midi, // carica un MIDI: le note scorrono e vanno suonate al volo
 }
 
 extension GameModeInfo on GameMode {
@@ -29,6 +30,8 @@ extension GameModeInfo on GameMode {
         return 'Intervalli';
       case GameMode.chord:
         return 'Accordi';
+      case GameMode.midi:
+        return 'MIDI';
     }
   }
 
@@ -44,6 +47,8 @@ extension GameModeInfo on GameMode {
         return 'Guardi due note e indovini l\'intervallo (seconda, terza…)';
       case GameMode.chord:
         return 'Costruisci l\'accordo selezionando le tre note';
+      case GameMode.midi:
+        return 'Carica un MIDI: suona le note mentre scorrono verso sinistra';
     }
   }
 
@@ -59,6 +64,8 @@ extension GameModeInfo on GameMode {
         return Icons.swap_vert;
       case GameMode.chord:
         return Icons.library_music_outlined;
+      case GameMode.midi:
+        return Icons.queue_music;
     }
   }
 }
