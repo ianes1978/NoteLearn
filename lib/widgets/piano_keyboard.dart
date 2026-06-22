@@ -13,6 +13,9 @@ class PianoKeyboard extends StatefulWidget {
   final Set<int> selected;
   final bool enabled;
 
+  /// Numero di ottave mostrate (1 = una sola, 2 = tastiera grande).
+  final int octaves;
+
   const PianoKeyboard({
     super.key,
     required this.notation,
@@ -21,6 +24,7 @@ class PianoKeyboard extends StatefulWidget {
     this.red = const {},
     this.selected = const {},
     this.enabled = true,
+    this.octaves = 1,
   });
 
   @override
@@ -61,9 +65,12 @@ class _PianoKeyboardState extends State<PianoKeyboard> {
     final whiteLabels =
         List.generate(7, (i) => MusicNote(i, 4).name(labelNotation));
 
+    final octaves = widget.octaves;
+    final whiteCount = 7 * octaves;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final whiteW = constraints.maxWidth / 7;
+        final whiteW = constraints.maxWidth / whiteCount;
         final h = constraints.maxHeight;
         final blackW = whiteW * 0.62;
         final blackH = h * 0.6;
@@ -72,8 +79,8 @@ class _PianoKeyboardState extends State<PianoKeyboard> {
           children: [
             // Tasti bianchi.
             Row(
-              children: List.generate(7, (i) {
-                final pc = _whitePc[i];
+              children: List.generate(whiteCount, (i) {
+                final pc = _whitePc[i % 7];
                 final keyColor = _bg(pc, theme);
                 final bg = keyColor ?? Colors.white;
                 final colored = keyColor != null;
@@ -99,13 +106,16 @@ class _PianoKeyboardState extends State<PianoKeyboard> {
                                 bottom: Radius.circular(8)),
                           ),
                           alignment: Alignment.bottomCenter,
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            whiteLabels[i],
-                            style: TextStyle(
-                              color: colored ? Colors.white : Colors.black87,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: FittedBox(
+                            child: Text(
+                              whiteLabels[i % 7],
+                              style: TextStyle(
+                                color:
+                                    colored ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ),
@@ -115,26 +125,27 @@ class _PianoKeyboardState extends State<PianoKeyboard> {
                 );
               }),
             ),
-            // Tasti neri (sopra, selezionabili).
-            for (var k = 0; k < _blackAfter.length; k++)
-              Positioned(
-                left: (_blackAfter[k] + 1) * whiteW - blackW / 2,
-                top: 0,
-                width: blackW,
-                height: blackH,
-                child: Material(
-                  color: _bg(_blackPc[k], theme) ?? Colors.black87,
-                  borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(5)),
-                  child: InkWell(
+            // Tasti neri (sopra, selezionabili) per ogni ottava.
+            for (var o = 0; o < octaves; o++)
+              for (var k = 0; k < _blackAfter.length; k++)
+                Positioned(
+                  left: (o * 7 + _blackAfter[k] + 1) * whiteW - blackW / 2,
+                  top: 0,
+                  width: blackW,
+                  height: blackH,
+                  child: Material(
+                    color: _bg(_blackPc[k], theme) ?? Colors.black87,
                     borderRadius: const BorderRadius.vertical(
                         bottom: Radius.circular(5)),
-                    onTap:
-                        widget.enabled ? () => _press(_blackPc[k]) : null,
-                    child: const SizedBox.expand(),
+                    child: InkWell(
+                      borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(5)),
+                      onTap:
+                          widget.enabled ? () => _press(_blackPc[k]) : null,
+                      child: const SizedBox.expand(),
+                    ),
                   ),
                 ),
-              ),
           ],
         );
       },

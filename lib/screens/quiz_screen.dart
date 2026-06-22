@@ -612,7 +612,7 @@ class _QuizScreenState extends State<QuizScreen> {
     }
     final h = _noteHighlights();
     final onTap = _isChord ? _pickChordNote : _answer;
-    // Gli accordi usano sempre la tastiera (servono anche i tasti neri).
+    // Gli accordi usano sempre la tastiera grande (2 ottave, tasti neri inclusi).
     if (_isChord || widget.answerInput == AnswerInput.piano) {
       return PianoKeyboard(
         notation: widget.notation,
@@ -621,6 +621,7 @@ class _QuizScreenState extends State<QuizScreen> {
         red: h.red,
         selected: h.selected,
         enabled: h.enabled,
+        octaves: _isChord ? 2 : 1,
       );
     }
     return _AnswerGrid(
