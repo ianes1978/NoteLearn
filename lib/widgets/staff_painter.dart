@@ -9,6 +9,8 @@ class StaffPainter extends CustomPainter {
 
   /// Seconda nota opzionale (usata nella modalità intervalli).
   final MusicNote? note2;
+  /// Accordo opzionale: più note impilate alla stessa x (modalità accordi).
+  final List<MusicNote>? chord;
   final Color lineColor;
   final Color noteColor;
 
@@ -18,6 +20,7 @@ class StaffPainter extends CustomPainter {
     required this.lineColor,
     required this.noteColor,
     this.note2,
+    this.chord,
   });
 
   @override
@@ -47,7 +50,14 @@ class StaffPainter extends CustomPainter {
 
     final note = this.note;
     final note2 = this.note2;
-    if (note != null && note2 != null) {
+    final chord = this.chord;
+    if (chord != null && chord.isNotEmpty) {
+      // Accordo: note impilate alla stessa posizione orizzontale.
+      for (final n in chord) {
+        _drawNote(canvas, n, size.width * 0.62, lineSpacing, yForPosition,
+            linePaint);
+      }
+    } else if (note != null && note2 != null) {
       // Due note affiancate (modalità intervalli).
       _drawNote(canvas, note, size.width * 0.46, lineSpacing, yForPosition,
           linePaint);
@@ -137,6 +147,7 @@ class StaffPainter extends CustomPainter {
     return oldDelegate.clef != clef ||
         oldDelegate.note != note ||
         oldDelegate.note2 != note2 ||
+        oldDelegate.chord != chord ||
         oldDelegate.lineColor != lineColor ||
         oldDelegate.noteColor != noteColor;
   }

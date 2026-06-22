@@ -128,6 +128,34 @@ String intervalName(int number) =>
         ? _intervalNames[number]
         : '$numberª';
 
+/// Triade diatonica (nota + terza + quinta) costruita sulle note naturali a
+/// partire da [root], in ordine ascendente.
+List<MusicNote> diatonicTriad(MusicNote root) {
+  final d0 = root.diatonicIndex;
+  final d2 = d0 + 2;
+  final d4 = d0 + 4;
+  return [
+    root,
+    MusicNote(d2 % 7, d2 ~/ 7),
+    MusicNote(d4 % 7, d4 ~/ 7),
+  ];
+}
+
+/// Qualità della triade diatonica costruita su [letterIndex] nella scala di Do
+/// (Do/Fa/Sol maggiori, Si diminuito, le altre minori).
+String triadQuality(int letterIndex) {
+  switch (letterIndex) {
+    case 0:
+    case 3:
+    case 4:
+      return 'maggiore';
+    case 6:
+      return 'diminuito';
+    default:
+      return 'minore';
+  }
+}
+
 /// Note "guida" di una chiave: riferimenti facili da cui ricavare le altre.
 /// Violino: Do centrale e Sol (la chiave "gira" sul Sol). Basso: Do centrale
 /// e Fa (la chiave segna il Fa fra i due punti).

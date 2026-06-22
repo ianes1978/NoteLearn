@@ -13,6 +13,7 @@ enum GameMode {
   listen, // ascolti il suono e indovini la nota
   timed, // a tempo: quante note indovini in 60 secondi
   interval, // indovini l'intervallo fra due note
+  chord, // costruisci l'accordo selezionando le tre note
 }
 
 extension GameModeInfo on GameMode {
@@ -26,6 +27,8 @@ extension GameModeInfo on GameMode {
         return 'A tempo';
       case GameMode.interval:
         return 'Intervalli';
+      case GameMode.chord:
+        return 'Accordi';
     }
   }
 
@@ -39,6 +42,8 @@ extension GameModeInfo on GameMode {
         return 'Quante note indovini in 60 secondi?';
       case GameMode.interval:
         return 'Guardi due note e indovini l\'intervallo (seconda, terza…)';
+      case GameMode.chord:
+        return 'Costruisci l\'accordo selezionando le tre note';
     }
   }
 
@@ -52,6 +57,8 @@ extension GameModeInfo on GameMode {
         return Icons.timer_outlined;
       case GameMode.interval:
         return Icons.swap_vert;
+      case GameMode.chord:
+        return Icons.library_music_outlined;
     }
   }
 }
@@ -69,12 +76,16 @@ class QuizScreen extends StatefulWidget {
   final GameMode mode;
   final AnswerInput answerInput;
 
+  /// In modalità accordi: include anche i rivolti (es. Do/Mi).
+  final bool invertedChords;
+
   const QuizScreen({
     super.key,
     required this.clefs,
     required this.notation,
     this.mode = GameMode.read,
     this.answerInput = AnswerInput.buttons,
+    this.invertedChords = false,
   });
 
   @override
@@ -90,6 +101,13 @@ class _QuizScreenState extends State<QuizScreen> {
   late MusicNote _currentNote;
   MusicNote? _currentNote2; // seconda nota (modalità intervalli)
   MusicNote? _prevNote; // per evitare la stessa nota due volte di fila
+
+  // Modalità accordi.
+  List<MusicNote> _chordNotes = []; // note dell'accordo, ordine ascendente
+  List<int> _chordExpected = []; // lettere attese (ordine = dal basso)
+  final List<int> _chordPicked = []; // lettere scelte dall'utente
+  String _chordLabel = '';
+  String _chordQuality = '';
 
   // Ripetizione spaziata: peso di estrazione per ogni nota (più alto = esce
   // più spesso). Le note sbagliate salgono di peso, quelle giuste scendono.
@@ -112,6 +130,7 @@ class _QuizScreenState extends State<QuizScreen> {
   bool get _isListen => widget.mode == GameMode.listen;
   bool get _isTimed => widget.mode == GameMode.timed;
   bool get _isInterval => widget.mode == GameMode.interval;
+  bool get _isChord => widget.mode == GameMode.chord;
 
   @override
   void initState() {
@@ -175,6 +194,11 @@ class _QuizScreenState extends State<QuizScreen> {
     final clef = widget.clefs[_random.nextInt(widget.clefs.length)];
     final notes = notesForClef(clef);
 
+    if (_isChord) {
+      _nextChord(clef);
+      return;
+    }
+
     if (_isInterval) {
       // Due note sulla stessa chiave, entro un'ottava (intervallo 1..8).
       final a = notes[_random.nextInt(notes.length)];
@@ -213,9 +237,60 @@ class _QuizScreenState extends State<QuizScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _playCurrent());
   }
 
-  /// Suona la nota corrente (o entrambe, in modalità intervalli).
+  /// Prepara un nuovo accordo (eventualmente rivoltato).
+  void _nextChord(Clef clef) {
+    final rootLetter = _random.nextInt(7);
+    final rootOctave = clef == Clef.treble ? 4 : 3;
+    final rootDi = rootOctave * 7 + rootLetter;
+    final triadDi = [rootDi, rootDi + 2, rootDi + 4]; // posizione fondamentale
+
+    final inversion = widget.invertedChords ? _random.nextInt(3) : 0;
+    final List<int> orderedDi;
+    switch (inversion) {
+      case 1: // primo rivolto: basso = terza
+        orderedDi = [triadDi[1], triadDi[2], triadDi[0] + 7];
+        break;
+      case 2: // secondo rivolto: basso = quinta
+        orderedDi = [triadDi[2], triadDi[0] + 7, triadDi[1] + 7];
+        break;
+      default: // posizione fondamentale
+        orderedDi = [triadDi[0], triadDi[1], triadDi[2]];
+    }
+
+    final chordNotes =
+        orderedDi.map((di) => MusicNote(di % 7, di ~/ 7)).toList();
+    final labelNotation =
+        widget.notation == Notation.both ? Notation.solfege : widget.notation;
+    final rootNote = MusicNote(rootLetter, rootOctave);
+    final label = inversion == 0
+        ? rootNote.name(labelNotation)
+        : '${rootNote.name(labelNotation)} / '
+            '${chordNotes.first.name(labelNotation)}';
+
+    setState(() {
+      _currentClef = clef;
+      _chordNotes = chordNotes;
+      _chordExpected = chordNotes.map((n) => n.letterIndex).toList();
+      _chordPicked.clear();
+      _chordLabel = label;
+      _chordQuality = triadQuality(rootLetter);
+      _selectedLetter = null;
+      _answered = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _playCurrent());
+  }
+
+  /// Suona la nota corrente (o l'accordo/intervallo).
   void _playCurrent() {
     if (!_soundOn) return;
+    if (_isChord) {
+      for (var i = 0; i < _chordNotes.length; i++) {
+        final f = _chordNotes[i].frequency;
+        Future.delayed(Duration(milliseconds: i * 450),
+            () => _soundOn ? _audio.play(f) : null);
+      }
+      return;
+    }
     _audio.play(_currentNote.frequency);
     final n2 = _currentNote2;
     if (n2 != null) {
@@ -285,6 +360,45 @@ class _QuizScreenState extends State<QuizScreen> {
     if (correct) _registerCorrect();
     _playCurrent();
     _scheduleAutoAdvance();
+  }
+
+  /// Selezione di una nota nell'accordo. Alla terza nota verifica da sola.
+  void _pickChordNote(int letterIndex) {
+    if (_answered) return;
+    if (_chordPicked.contains(letterIndex)) return; // ignora i doppioni
+    setState(() => _chordPicked.add(letterIndex));
+    if (_soundOn) {
+      _audio.play(MusicNote(letterIndex, _currentClef == Clef.treble ? 4 : 3)
+          .frequency);
+    }
+    if (_chordPicked.length < 3) return;
+
+    // Tre note scelte: valuta. Con i rivolti conta anche l'ordine (dal basso).
+    final correct = widget.invertedChords
+        ? _listEq(_chordPicked, _chordExpected)
+        : _chordPicked.toSet().containsAll(_chordExpected.toSet()) &&
+            _chordPicked.length == _chordExpected.length;
+    setState(() {
+      _answered = true;
+      _total++;
+      if (correct) {
+        _score++;
+        _streak++;
+      } else {
+        _streak = 0;
+      }
+    });
+    if (correct) _registerCorrect();
+    _playCurrent();
+    _scheduleAutoAdvance();
+  }
+
+  static bool _listEq(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   /// Avanza da solo alla domanda successiva: nessuna conferma da parte
@@ -359,8 +473,47 @@ class _QuizScreenState extends State<QuizScreen> {
 
   // ---- UI ----
 
-  /// Area centrale: pentagramma o pulsante d'ascolto.
+  /// Area centrale: pentagramma, accordo o pulsante d'ascolto.
   Widget _buildStage(ThemeData theme, bool isCorrect) {
+    if (_isChord) {
+      // Prima della risposta mostra il nome dell'accordo; dopo, lo rivela
+      // sul pentagramma.
+      if (_answered) {
+        return CustomPaint(
+          painter: StaffPainter(
+            clef: _currentClef,
+            note: null,
+            chord: _chordNotes,
+            lineColor: theme.colorScheme.onSurface,
+            noteColor: isCorrect ? Colors.green : Colors.red,
+          ),
+          child: const SizedBox.expand(),
+        );
+      }
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Costruisci l\'accordo',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.outline)),
+            const SizedBox(height: 6),
+            Text(
+              _chordLabel,
+              style: theme.textTheme.displaySmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            Text('($_chordQuality)',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.outline)),
+            const SizedBox(height: 6),
+            Text('Scegli 3 note · ${_chordPicked.length}/3',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.primary)),
+          ],
+        ),
+      );
+    }
     final showStaff = !_isListen || _answered;
     if (showStaff) {
       return CustomPaint(
@@ -396,6 +549,41 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
+  /// Calcola gli insiemi di evidenziazione (verde/rosso/in corso) per i
+  /// pulsanti o la tastiera, validi sia per i modi a nota singola sia accordi.
+  _Highlights _noteHighlights() {
+    if (_isChord) {
+      if (_answered) {
+        final exp = _chordExpected.toSet();
+        return _Highlights(
+          green: exp,
+          red: _chordPicked.toSet().difference(exp),
+          selected: const <int>{},
+          enabled: false,
+        );
+      }
+      return _Highlights(
+        green: const <int>{},
+        red: const <int>{},
+        selected: _chordPicked.toSet(),
+        enabled: true,
+      );
+    }
+    if (_answered) {
+      final correctL = _currentNote.letterIndex;
+      return _Highlights(
+        green: {correctL},
+        red: (_selectedLetter != null && _selectedLetter != correctL)
+            ? {_selectedLetter!}
+            : const <int>{},
+        selected: const <int>{},
+        enabled: false,
+      );
+    }
+    return const _Highlights(
+        green: <int>{}, red: <int>{}, selected: <int>{}, enabled: true);
+  }
+
   Widget _buildAnswerArea() {
     if (_isInterval) {
       return _IntervalGrid(
@@ -407,39 +595,48 @@ class _QuizScreenState extends State<QuizScreen> {
         onAnswer: _answerInterval,
       );
     }
+    final h = _noteHighlights();
+    final onTap = _isChord ? _pickChordNote : _answer;
     if (widget.answerInput == AnswerInput.piano) {
       return _PianoKeyboard(
         notation: widget.notation,
-        answered: _answered,
-        correctLetter: _currentNote.letterIndex,
-        selectedLetter: _selectedLetter,
-        onAnswer: _answer,
+        highlights: h,
+        onAnswer: onTap,
       );
     }
     return _AnswerGrid(
       notation: widget.notation,
-      answered: _answered,
-      correctLetter: _currentNote.letterIndex,
-      selectedLetter: _selectedLetter,
-      onAnswer: _answer,
+      highlights: h,
+      onAnswer: onTap,
     );
+  }
+
+  bool _answerWasCorrect() {
+    if (_isChord) {
+      return widget.invertedChords
+          ? _listEq(_chordPicked, _chordExpected)
+          : _chordPicked.toSet().containsAll(_chordExpected.toSet()) &&
+              _chordPicked.length == _chordExpected.length;
+    }
+    if (_isInterval) {
+      return _selectedInterval ==
+          _currentNote.diatonicIntervalTo(_currentNote2!);
+    }
+    return _selectedLetter == _currentNote.letterIndex;
   }
 
   String _appBarTitle() {
     if (_isListen) return 'Ascolta';
     if (_isTimed) return 'A tempo';
     if (_isInterval) return 'Intervalli';
+    if (_isChord) return 'Accordi';
     return _currentClef.shortName;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isCorrect = _answered &&
-        (_isInterval
-            ? _selectedInterval ==
-                _currentNote.diatonicIntervalTo(_currentNote2!)
-            : _selectedLetter == _currentNote.letterIndex);
+    final isCorrect = _answered && _answerWasCorrect();
 
     return Scaffold(
       appBar: AppBar(
@@ -513,7 +710,11 @@ class _QuizScreenState extends State<QuizScreen> {
                             text: _feedbackText(isCorrect),
                           )
                         : Text(
-                            _isInterval ? 'Che intervallo è?' : 'Che nota è?',
+                            _isChord
+                                ? 'Tocca le 3 note'
+                                : _isInterval
+                                    ? 'Che intervallo è?'
+                                    : 'Che nota è?',
                             style: theme.textTheme.titleLarge,
                           ),
                   ),
@@ -533,6 +734,12 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   String _feedbackText(bool correct) {
+    if (_isChord) {
+      final ln =
+          widget.notation == Notation.both ? Notation.solfege : widget.notation;
+      final names = _chordNotes.map((n) => n.name(ln)).join(' · ');
+      return correct ? 'Esatto! $names' : '$_chordLabel = $names';
+    }
     if (_isInterval) {
       final actual = _currentNote.diatonicIntervalTo(_currentNote2!);
       final name = intervalName(actual);
@@ -541,6 +748,20 @@ class _QuizScreenState extends State<QuizScreen> {
     final n = _currentNote.name(widget.notation);
     return correct ? 'Esatto! $n' : 'È $n';
   }
+}
+
+/// Insiemi di evidenziazione per i pulsanti/tasti risposta.
+class _Highlights {
+  final Set<int> green;
+  final Set<int> red;
+  final Set<int> selected;
+  final bool enabled;
+  const _Highlights({
+    required this.green,
+    required this.red,
+    required this.selected,
+    required this.enabled,
+  });
 }
 
 class _StreakBar extends StatelessWidget {
@@ -599,16 +820,12 @@ class _Feedback extends StatelessWidget {
 
 class _AnswerGrid extends StatelessWidget {
   final Notation notation;
-  final bool answered;
-  final int correctLetter;
-  final int? selectedLetter;
+  final _Highlights highlights;
   final void Function(int) onAnswer;
 
   const _AnswerGrid({
     required this.notation,
-    required this.answered,
-    required this.correctLetter,
-    required this.selectedLetter,
+    required this.highlights,
     required this.onAnswer,
   });
 
@@ -629,14 +846,15 @@ class _AnswerGrid extends StatelessWidget {
       children: List.generate(7, (i) {
         Color? bg;
         Color? fg;
-        if (answered) {
-          if (i == correctLetter) {
-            bg = Colors.green;
-            fg = Colors.white;
-          } else if (i == selectedLetter) {
-            bg = Colors.red;
-            fg = Colors.white;
-          }
+        if (highlights.green.contains(i)) {
+          bg = Colors.green;
+          fg = Colors.white;
+        } else if (highlights.red.contains(i)) {
+          bg = Colors.red;
+          fg = Colors.white;
+        } else if (highlights.selected.contains(i)) {
+          bg = theme.colorScheme.tertiaryContainer;
+          fg = theme.colorScheme.onTertiaryContainer;
         }
         return FilledButton(
           style: FilledButton.styleFrom(
@@ -644,7 +862,7 @@ class _AnswerGrid extends StatelessWidget {
             foregroundColor: fg ?? theme.colorScheme.onSecondaryContainer,
             padding: EdgeInsets.zero,
           ),
-          onPressed: answered ? null : () => onAnswer(i),
+          onPressed: highlights.enabled ? () => onAnswer(i) : null,
           child: FittedBox(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -666,16 +884,12 @@ class _AnswerGrid extends StatelessWidget {
 /// (l'app usa solo note naturali).
 class _PianoKeyboard extends StatelessWidget {
   final Notation notation;
-  final bool answered;
-  final int correctLetter;
-  final int? selectedLetter;
+  final _Highlights highlights;
   final void Function(int) onAnswer;
 
   const _PianoKeyboard({
     required this.notation,
-    required this.answered,
-    required this.correctLetter,
-    required this.selectedLetter,
+    required this.highlights,
     required this.onAnswer,
   });
 
@@ -704,14 +918,15 @@ class _PianoKeyboard extends StatelessWidget {
               children: List.generate(7, (i) {
                 Color bg = Colors.white;
                 Color fg = Colors.black87;
-                if (answered) {
-                  if (i == correctLetter) {
-                    bg = Colors.green;
-                    fg = Colors.white;
-                  } else if (i == selectedLetter) {
-                    bg = Colors.red;
-                    fg = Colors.white;
-                  }
+                if (highlights.green.contains(i)) {
+                  bg = Colors.green;
+                  fg = Colors.white;
+                } else if (highlights.red.contains(i)) {
+                  bg = Colors.red;
+                  fg = Colors.white;
+                } else if (highlights.selected.contains(i)) {
+                  bg = theme.colorScheme.tertiaryContainer;
+                  fg = theme.colorScheme.onTertiaryContainer;
                 }
                 return SizedBox(
                   width: whiteW,
@@ -726,7 +941,7 @@ class _PianoKeyboard extends StatelessWidget {
                       child: InkWell(
                         borderRadius: const BorderRadius.vertical(
                             bottom: Radius.circular(8)),
-                        onTap: answered ? null : () => onAnswer(i),
+                        onTap: highlights.enabled ? () => onAnswer(i) : null,
                         child: Container(
                           decoration: BoxDecoration(
                             border: Border.all(

@@ -19,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Notation _notation = Notation.solfege;
   GameMode _mode = GameMode.read;
   AnswerInput _answerInput = AnswerInput.buttons;
+  bool _invertedChords = false;
 
   final ProgressStore _store = ProgressStore();
   Progress _progress = Progress();
@@ -54,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
           notation: _notation,
           mode: _mode,
           answerInput: _answerInput,
+          invertedChords: _invertedChords,
         ),
       ),
     );
@@ -166,6 +168,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.outline),
                   ),
+                  if (_mode == GameMode.chord)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: _invertedChords,
+                        onChanged: (v) =>
+                            setState(() => _invertedChords = v),
+                        title: const Text('Accordi rivoltati'),
+                        subtitle: const Text(
+                            'Includi i rivolti (es. Do/Mi): scegli le note dal basso'),
+                      ),
+                    ),
                   const SizedBox(height: 28),
                   const _SectionTitle('Notazione'),
                   const SizedBox(height: 8),
