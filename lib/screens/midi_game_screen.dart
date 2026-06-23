@@ -181,10 +181,10 @@ class _MidiGameScreenState extends State<MidiGameScreen>
     }
   }
 
-  void _onPlay(int pitchClass) {
+  void _onPlay(int midi) {
     // Suona sempre il tasto premuto (feedback).
-    final octave = _clef == Clef.treble ? 4 : 3;
-    _audio.play(MusicNote.fromMidi((octave + 1) * 12 + pitchClass).frequency);
+    _audio.play(MusicNote.fromMidi(midi).frequency);
+    final pitchClass = midi % 12;
     if (_phase != _Phase.playing) return;
 
     // Cerca la nota in finestra più vicina al momento attuale.

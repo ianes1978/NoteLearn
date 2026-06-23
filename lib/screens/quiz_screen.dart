@@ -112,8 +112,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   // Modalità accordi.
   List<MusicNote> _chordNotes = []; // note dell'accordo, ordine ascendente
-  List<int> _chordExpected = []; // classi di altezza attese (ordine dal basso)
-  final List<int> _chordPicked = []; // classi di altezza scelte dall'utente
+  final List<int> _chordPicked = []; // MIDI dei tasti scelti dall'utente
   String _chordLabel = '';
   String _chordQuality = '';
 
@@ -280,7 +279,6 @@ class _QuizScreenState extends State<QuizScreen> {
     setState(() {
       _currentClef = clef;
       _chordNotes = chordNotes;
-      _chordExpected = chordNotes.map((n) => n.pitchClass).toList();
       _chordPicked.clear();
       _chordLabel = label;
       _chordQuality = major ? 'maggiore' : 'minore';
@@ -375,24 +373,17 @@ class _QuizScreenState extends State<QuizScreen> {
 
   /// Selezione di una nota nell'accordo. Alla terza nota verifica da sola.
   /// Toccando una nota già scelta (prima della terza) la si deseleziona.
-  void _pickChordNote(int pc) {
+  void _pickChordNote(int midi) {
     if (_answered) return;
-    if (_chordPicked.contains(pc)) {
-      setState(() => _chordPicked.remove(pc)); // deseleziona
+    if (_chordPicked.contains(midi)) {
+      setState(() => _chordPicked.remove(midi)); // deseleziona
       return;
     }
-    setState(() => _chordPicked.add(pc));
-    if (_soundOn) {
-      final octave = _currentClef == Clef.treble ? 4 : 3;
-      _audio.play(MusicNote.fromMidi((octave + 1) * 12 + pc).frequency);
-    }
+    setState(() => _chordPicked.add(midi));
+    if (_soundOn) _audio.play(MusicNote.fromMidi(midi).frequency);
     if (_chordPicked.length < 3) return;
 
-    // Tre note scelte: valuta. Con i rivolti conta anche l'ordine (dal basso).
-    final correct = widget.invertedChords
-        ? _listEq(_chordPicked, _chordExpected)
-        : _chordPicked.toSet().containsAll(_chordExpected.toSet()) &&
-            _chordPicked.length == _chordExpected.length;
+    final correct = _chordCorrect();
     setState(() {
       _answered = true;
       _total++;
@@ -408,12 +399,18 @@ class _QuizScreenState extends State<QuizScreen> {
     _scheduleAutoAdvance();
   }
 
-  static bool _listEq(List<int> a, List<int> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
+  /// Verifica l'accordo. Con i rivolti conta la posizione reale (l'ottava di
+  /// ogni nota), quindi serve premere gli esatti tasti; senza rivolti basta
+  /// avere le tre note giuste in qualunque ottava.
+  bool _chordCorrect() {
+    if (_chordPicked.length != 3) return false;
+    if (widget.invertedChords) {
+      final expected = _chordNotes.map((n) => n.midiNumber).toSet();
+      return setEquals(_chordPicked.toSet(), expected);
     }
-    return true;
+    final expectedPc = _chordNotes.map((n) => n.pitchClass).toSet();
+    final pickedPc = _chordPicked.map((m) => m % 12).toSet();
+    return pickedPc.length == 3 && setEquals(pickedPc, expectedPc);
   }
 
   /// Avanza da solo alla domanda successiva: nessuna conferma da parte
@@ -564,26 +561,8 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  /// Calcola gli insiemi di evidenziazione (verde/rosso/in corso) per i
-  /// pulsanti o la tastiera, validi sia per i modi a nota singola sia accordi.
+  /// Evidenziazione per i pulsanti dei nomi (per classe di altezza).
   _Highlights _noteHighlights() {
-    if (_isChord) {
-      if (_answered) {
-        final exp = _chordExpected.toSet();
-        return _Highlights(
-          green: exp,
-          red: _chordPicked.toSet().difference(exp),
-          selected: const <int>{},
-          enabled: false,
-        );
-      }
-      return _Highlights(
-        green: const <int>{},
-        red: const <int>{},
-        selected: _chordPicked.toSet(),
-        enabled: true,
-      );
-    }
     if (_answered) {
       final correctPc = _currentNote.pitchClass;
       return _Highlights(
@@ -610,34 +589,56 @@ class _QuizScreenState extends State<QuizScreen> {
         onAnswer: _answerInterval,
       );
     }
-    final h = _noteHighlights();
-    final onTap = _isChord ? _pickChordNote : _answer;
-    // Gli accordi usano sempre la tastiera grande (2 ottave, tasti neri inclusi).
-    if (_isChord || widget.answerInput == AnswerInput.piano) {
+
+    if (_isChord) {
+      // Tastiera grande sulle ottave dell'accordo: i tasti corrispondono alle
+      // note reali, così la posizione (l'ottava) conta per i rivolti.
+      final baseOctave =
+          _chordNotes.map((n) => n.octave).reduce((a, b) => a < b ? a : b);
+      final maxOctave =
+          _chordNotes.map((n) => n.octave).reduce((a, b) => a > b ? a : b);
+      final octaves = (maxOctave - baseOctave + 1).clamp(1, 3).toInt();
+      final expected = _chordNotes.map((n) => n.midiNumber).toSet();
+      final picked = _chordPicked.toSet();
       return PianoKeyboard(
         notation: widget.notation,
-        onKey: onTap,
-        green: h.green,
-        red: h.red,
-        selected: h.selected,
-        enabled: h.enabled,
-        octaves: _isChord ? 2 : 1,
+        onKey: _pickChordNote,
+        baseOctave: baseOctave,
+        octaves: octaves,
+        green: _answered ? expected : const <int>{},
+        red: _answered ? picked.difference(expected) : const <int>{},
+        selected: _answered ? const <int>{} : picked,
+        enabled: !_answered,
       );
     }
+
+    if (widget.answerInput == AnswerInput.piano) {
+      // Una sola ottava (base Do4): risposta per classe di altezza.
+      const base = 4;
+      int midiOf(int pc) => (base + 1) * 12 + pc;
+      final correctPc = _currentNote.pitchClass;
+      return PianoKeyboard(
+        notation: widget.notation,
+        baseOctave: base,
+        octaves: 1,
+        onKey: (midi) => _answer(midi % 12),
+        green: _answered ? {midiOf(correctPc)} : const <int>{},
+        red: (_answered && _selectedPc != null && _selectedPc != correctPc)
+            ? {midiOf(_selectedPc!)}
+            : const <int>{},
+        enabled: !_answered,
+      );
+    }
+
     return _AnswerGrid(
       notation: widget.notation,
-      highlights: h,
-      onAnswer: onTap,
+      highlights: _noteHighlights(),
+      onAnswer: _answer,
     );
   }
 
   bool _answerWasCorrect() {
-    if (_isChord) {
-      return widget.invertedChords
-          ? _listEq(_chordPicked, _chordExpected)
-          : _chordPicked.toSet().containsAll(_chordExpected.toSet()) &&
-              _chordPicked.length == _chordExpected.length;
-    }
+    if (_isChord) return _chordCorrect();
     if (_isInterval) {
       return _selectedInterval ==
           _currentNote.diatonicIntervalTo(_currentNote2!);
