@@ -64,6 +64,7 @@ class _MidiGameScreenState extends State<MidiGameScreen>
   int _score = 0;
   int _combo = 0;
   int _comboForLife = 0;
+  bool _showKeyLabels = true;
 
   @override
   void dispose() {
@@ -219,7 +220,20 @@ class _MidiGameScreenState extends State<MidiGameScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('MIDI')),
+      appBar: AppBar(
+        title: const Text('MIDI'),
+        actions: [
+          if (_phase == _Phase.playing)
+            IconButton(
+              tooltip: _showKeyLabels
+                  ? 'Nascondi i nomi sui tasti'
+                  : 'Mostra i nomi sui tasti',
+              icon: Icon(_showKeyLabels ? Icons.label : Icons.label_off),
+              onPressed: () =>
+                  setState(() => _showKeyLabels = !_showKeyLabels),
+            ),
+        ],
+      ),
       body: SafeArea(
         child: switch (_phase) {
           _Phase.setup => _buildSetup(),
@@ -347,6 +361,7 @@ class _MidiGameScreenState extends State<MidiGameScreen>
             child: PianoKeyboard(
               notation: widget.notation,
               onKey: _onPlay,
+              showLabels: _showKeyLabels,
             ),
           ),
         ),

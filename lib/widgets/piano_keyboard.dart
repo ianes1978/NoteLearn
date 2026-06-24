@@ -16,6 +16,9 @@ class PianoKeyboard extends StatefulWidget {
   final int baseOctave;
   final int octaves;
 
+  /// Mostra il nome della nota sui tasti bianchi.
+  final bool showLabels;
+
   const PianoKeyboard({
     super.key,
     required this.notation,
@@ -26,6 +29,7 @@ class PianoKeyboard extends StatefulWidget {
     this.enabled = true,
     this.baseOctave = 4,
     this.octaves = 1,
+    this.showLabels = true,
   });
 
   @override
@@ -110,17 +114,20 @@ class _PianoKeyboardState extends State<PianoKeyboard> {
                           ),
                           alignment: Alignment.bottomCenter,
                           padding: const EdgeInsets.only(bottom: 6),
-                          child: FittedBox(
-                            child: Text(
-                              whiteLabels[i % 7],
-                              style: TextStyle(
-                                color:
-                                    colored ? Colors.white : Colors.black87,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
+                          child: widget.showLabels
+                              ? FittedBox(
+                                  child: Text(
+                                    whiteLabels[i % 7],
+                                    style: TextStyle(
+                                      color: colored
+                                          ? Colors.white
+                                          : Colors.black87,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                )
+                              : null,
                         ),
                       ),
                     ),

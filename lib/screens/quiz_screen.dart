@@ -128,6 +128,7 @@ class _QuizScreenState extends State<QuizScreen> {
   int? _selectedInterval; // risposta scelta nel modo intervalli
   bool _answered = false;
   bool _soundOn = true;
+  bool _showKeyLabels = true; // mostra i nomi sui tasti della tastiera
 
   // Modalità a tempo.
   Timer? _timer;
@@ -613,6 +614,7 @@ class _QuizScreenState extends State<QuizScreen> {
         red: _answered ? picked.difference(expected) : const <int>{},
         selected: _answered ? const <int>{} : picked,
         enabled: !_answered,
+        showLabels: _showKeyLabels,
       );
     }
 
@@ -631,6 +633,7 @@ class _QuizScreenState extends State<QuizScreen> {
             ? {midiOf(_selectedPc!)}
             : const <int>{},
         enabled: !_answered,
+        showLabels: _showKeyLabels,
       );
     }
 
@@ -672,6 +675,15 @@ class _QuizScreenState extends State<QuizScreen> {
             icon: Icon(_soundOn ? Icons.volume_up : Icons.volume_off),
             onPressed: () => setState(() => _soundOn = !_soundOn),
           ),
+          if (_isChord || widget.answerInput == AnswerInput.piano)
+            IconButton(
+              tooltip: _showKeyLabels
+                  ? 'Nascondi i nomi sui tasti'
+                  : 'Mostra i nomi sui tasti',
+              icon: Icon(_showKeyLabels ? Icons.label : Icons.label_off),
+              onPressed: () =>
+                  setState(() => _showKeyLabels = !_showKeyLabels),
+            ),
           IconButton(
             tooltip: 'Aiuto · Mostra tutte le note',
             icon: const Icon(Icons.help_outline),
