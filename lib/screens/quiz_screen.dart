@@ -406,12 +406,15 @@ class _QuizScreenState extends State<QuizScreen> {
     if (_chordPicked.length != 3) return false;
     if (widget.invertedChords) {
       final expected = _chordNotes.map((n) => n.midiNumber).toSet();
-      return setEquals(_chordPicked.toSet(), expected);
+      return _setEq(_chordPicked.toSet(), expected);
     }
     final expectedPc = _chordNotes.map((n) => n.pitchClass).toSet();
     final pickedPc = _chordPicked.map((m) => m % 12).toSet();
-    return pickedPc.length == 3 && setEquals(pickedPc, expectedPc);
+    return pickedPc.length == 3 && _setEq(pickedPc, expectedPc);
   }
+
+  static bool _setEq(Set<int> a, Set<int> b) =>
+      a.length == b.length && a.containsAll(b);
 
   /// Avanza da solo alla domanda successiva: nessuna conferma da parte
   /// dell'utente (basta scegliere la risposta).
