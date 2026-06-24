@@ -90,9 +90,9 @@ class MusicNote {
   String get letterName => _letters[letterIndex];
   String get solfegeName => _solfege[letterIndex];
 
-  /// Simbolo dell'alterazione (♯/♭/'').
+  /// Simbolo dell'alterazione (#/b/''). ASCII per essere sempre leggibile.
   String get accidentalSymbol =>
-      accidental > 0 ? '♯' : (accidental < 0 ? '♭' : '');
+      accidental > 0 ? '#' : (accidental < 0 ? 'b' : '');
 
   /// Nome formattato secondo la notazione scelta (con l'eventuale alterazione).
   String name(Notation notation) {

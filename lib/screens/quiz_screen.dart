@@ -271,10 +271,11 @@ class _QuizScreenState extends State<QuizScreen> {
     final labelNotation =
         widget.notation == Notation.both ? Notation.solfege : widget.notation;
     final rootNote = triad[0];
+    // Indica la qualità nell'etichetta: "m" per minore (così Fam/Lab è chiaro).
+    final rootName = '${rootNote.name(labelNotation)}${major ? '' : 'm'}';
     final label = inversion == 0
-        ? rootNote.name(labelNotation)
-        : '${rootNote.name(labelNotation)} / '
-            '${chordNotes.first.name(labelNotation)}';
+        ? rootName
+        : '$rootName / ${chordNotes.first.name(labelNotation)}';
 
     setState(() {
       _currentClef = clef;
