@@ -2,11 +2,17 @@ name: Release APK
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - claude/flutter-music-note-app-fi8n4j
+    paths:
+      - 'RELEASE'
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  RELEASE_TAG: v1.0.0
 
 jobs:
   release:
@@ -66,20 +72,21 @@ jobs:
         run: flutter build apk --release
 
       - name: Rinomina APK
-        run: cp build/app/outputs/flutter-apk/app-release.apk NoteLearn-${{ github.ref_name }}.apk
+        run: cp build/app/outputs/flutter-apk/app-release.apk NoteLearn.apk
 
       - name: Pubblica la Release con l'APK allegato
         uses: softprops/action-gh-release@v2
         with:
-          name: NoteLearn ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          files: NoteLearn-${{ github.ref_name }}.apk
+          name: NoteLearn ${{ env.RELEASE_TAG }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          files: NoteLearn.apk
           body: |
             App per imparare le note sul pentagramma 🎵
 
             **Versione Web (apri dal browser):** https://ianes1978.github.io/NoteLearn/
 
-            **Android:** scarica `NoteLearn-${{ github.ref_name }}.apk` qui sotto e installalo
+            **Android:** scarica `NoteLearn.apk` qui sotto e installalo
             (consenti l'installazione da origini sconosciute).
 
             Modalità: Leggi · Ascolta · A tempo · Intervalli · Accordi (con rivolti) · MIDI.
