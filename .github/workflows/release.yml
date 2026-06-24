@@ -1,0 +1,87 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build APK e pubblica Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Genera la piattaforma Android
+        run: |
+          flutter create --platforms=android .
+          rm -f test/widget_test.dart
+
+      - name: Forza compileSdk 36 su tutti i moduli (richiesto da file_picker)
+        run: |
+          if [ -f android/build.gradle.kts ]; then
+            snippet=$(printf '%s\n' \
+              'subprojects {' \
+              '    afterEvaluate {' \
+              '        val a = extensions.findByName("android")' \
+              '        if (a is com.android.build.gradle.BaseExtension) a.compileSdkVersion(36)' \
+              '    }' \
+              '}' \
+              '')
+            { printf '%s\n' "$snippet"; cat android/build.gradle.kts; } > /tmp/root.gradle
+            mv /tmp/root.gradle android/build.gradle.kts
+          elif [ -f android/build.gradle ]; then
+            snippet=$(printf '%s\n' \
+              'subprojects {' \
+              '    afterEvaluate { p ->' \
+              '        if (p.hasProperty("android")) { p.android { compileSdkVersion 36 } }' \
+              '    }' \
+              '}' \
+              '')
+            { printf '%s\n' "$snippet"; cat android/build.gradle; } > /tmp/root.gradle
+            mv /tmp/root.gradle android/build.gradle
+          fi
+
+      - name: Installa le dipendenze
+        run: flutter pub get
+
+      - name: Build APK (Android)
+        run: flutter build apk --release
+
+      - name: Rinomina APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk NoteLearn-${{ github.ref_name }}.apk
+
+      - name: Pubblica la Release con l'APK allegato
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NoteLearn ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: NoteLearn-${{ github.ref_name }}.apk
+          body: |
+            App per imparare le note sul pentagramma 🎵
+
+            **Versione Web (apri dal browser):** https://ianes1978.github.io/NoteLearn/
+
+            **Android:** scarica `NoteLearn-${{ github.ref_name }}.apk` qui sotto e installalo
+            (consenti l'installazione da origini sconosciute).
+
+            Modalità: Leggi · Ascolta · A tempo · Intervalli · Accordi (con rivolti) · MIDI.
+            Note naturali e alterate (diesis/bemolle), tastiera di pianoforte,
+            schermata Aiuto con regole mnemoniche.
