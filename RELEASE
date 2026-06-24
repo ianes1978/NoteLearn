@@ -1,4 +1,6 @@
-v1.0.0 - Prima release
+v1.0.0 - Release
+
+Novità: interruttore per mostrare/nascondere i nomi sui tasti della tastiera.
 
 Modifica questo file (o lancia il workflow "Release APK" a mano) per
 pubblicare una nuova GitHub Release con l'APK allegato.
