@@ -68,6 +68,9 @@ jobs:
       - name: Installa le dipendenze
         run: flutter pub get
 
+      - name: Genera le icone dell'app
+        run: dart run flutter_launcher_icons
+
       - name: Build APK (Android)
         run: flutter build apk --release
 

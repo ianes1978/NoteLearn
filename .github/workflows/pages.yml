@@ -39,6 +39,9 @@ jobs:
       - name: Installa le dipendenze
         run: flutter pub get
 
+      - name: Genera le icone dell'app
+        run: dart run flutter_launcher_icons
+
       # base-href deve corrispondere al percorso del sito di progetto:
       # https://ianes1978.github.io/NoteLearn/
       - name: Build Web
